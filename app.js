@@ -12,12 +12,29 @@ let skins={items:[],cur:null,nid:1};
 const accLvl=()=>1+Math.floor(Math.sqrt(acc.xp/40));
 function addXp(n){const b=accLvl();acc.xp+=Math.round(n*(1+perk('exp')/100));const a=accLvl();if(a>b){let got=0;for(let l=b+1;l<=a;l++)if(l%3===0)got++;acc.crates=(acc.crates||0)+got;setTimeout(()=>{msg(`⭐ Awans! Poziom konta ${a}`+(got?' · 🎁 Skrzynka!':''));sfx.up()},60)}}
 let topRow=0;
+// ---- YouTube Playables SDK (skrypt ładowany w index.html PRZED app.js) ----
+const YG=(typeof ytgame!=='undefined')?ytgame:null; // poza YouTube SDK jest no-op / nie istnieje
+const IN_PLAY=!!(YG&&YG.IN_PLAYABLES_ENV);
+let ytAudio=true,paused=false,bestDepth=0;
+let cloudReady=false,cloudPending=null,cloudT=null;
+const logWarn=()=>{if(IN_PLAY)try{YG.health.logWarning()}catch(e){}};
+const sendBest=v=>{if(!IN_PLAY)return;try{const p=YG.engagement.sendScore({value:Math.max(0,Math.round(v||0))});if(p&&p.catch)p.catch(()=>{})}catch(e){}};
+function flushCloudSave(){clearTimeout(cloudT);cloudT=null;if(!IN_PLAY||!cloudReady||cloudPending==null)return;const s=cloudPending;cloudPending=null;
+ try{const p=YG.game.saveData(s);if(p&&p.catch)p.catch(logWarn)}catch(e){logWarn()}}
+function queueCloudSave(s){if(!IN_PLAY)return;cloudPending=s;clearTimeout(cloudT);cloudT=setTimeout(flushCloudSave,500)}
+async function cloudLoad(){if(!IN_PLAY)return '';try{return (await YG.game.loadData())||''}catch(e){logWarn();return ''}finally{cloudReady=true}}
 const KEY='kopalnia-save-v1';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({coins,spawnLvl,spawnCost,upCost,incLvl,incCost,renLvl,renCost,grid,rows,topRow,inv,blastLvl,blastCost,bombs,bombCost,war,acc,econ,skins}))}catch(e){}}
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d)({coins,spawnLvl,spawnCost,upCost,incLvl,incCost,renLvl,renCost,grid,rows,topRow,inv,blastLvl,blastCost,bombs,bombCost,war,acc,econ,skins}=d)}catch(e){}}
+function save(){const s=JSON.stringify({coins,spawnLvl,spawnCost,upCost,incLvl,incCost,renLvl,renCost,grid,rows,topRow,inv,blastLvl,blastCost,bombs,bombCost,war,acc,econ,skins,bestDepth});
+ if(IN_PLAY)queueCloudSave(s);else{try{localStorage.setItem(KEY,s)}catch(e){}}} // w Playables zapis TYLKO przez saveData()
+function load(){if(IN_PLAY)return;try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d)applySave(d)}catch(e){}}
+function applySave(d){ // brakujące pola (starsze wersje gry) zostają z domyślnych wartości
+ const c={coins,spawnLvl,spawnCost,upCost,incLvl,incCost,renLvl,renCost,grid,rows,topRow,inv,blastLvl,blastCost,bombs,bombCost,war,acc,econ,skins,bestDepth};const m=Object.assign(c,d);
+ ({coins,spawnLvl,spawnCost,upCost,incLvl,incCost,renLvl,renCost,grid,rows,topRow,inv,blastLvl,blastCost,bombs,bombCost,war,acc,econ,skins,bestDepth}=m)}
 const incMul=()=>1.5*(1+0.5*incLvl)*(1+0.06*acc.s.gain+perk('gain')/100);
 const renChance=()=>Math.min(1,0.5+0.1*renLvl);
-load();rows.length=Math.min(rows.length,topRow);inv=inv||{};blastLvl=blastLvl||0;blastCost=blastCost||80;bombs=bombs||0;bombCost=bombCost||250;war=war||{wave:1,fire:0,slow:0,weak:0};acc=acc||{xp:0};acc.s=acc.s||{pow:0,gain:0,luck:0,hp:0};econ=econ||{pas:0,dis:0};skins=skins||{items:[],cur:null,nid:1};if(skins.owned){const it=[];let n=1,cu=null;skins.owned.forEach(o=>{if(o==='def')return;it.push({id:n,theme:o,rar:0});if(skins.cur===o)cu=n;n++});skins={items:it,cur:cu,nid:n}}
+// normalize() też po wczytaniu chmury — dane zapisane przez starsze wersje gry nie mogą tworzyć błędów
+function normalize(){rows=rows||[];grid=grid||Array(N*N).fill(0);rows.length=Math.min(rows.length,topRow);inv=inv||{};blastLvl=blastLvl||0;blastCost=blastCost||80;bombs=bombs||0;bombCost=bombCost||250;war=war||{wave:1,fire:0,slow:0,weak:0};acc=acc||{xp:0};acc.s=acc.s||{pow:0,gain:0,luck:0,hp:0};econ=econ||{pas:0,dis:0};skins=skins||{items:[],cur:null,nid:1};bestDepth=bestDepth||0;if(skins.owned){const it=[];let n=1,cu=null;skins.owned.forEach(o=>{if(o==='def')return;it.push({id:n,theme:o,rar:0});if(skins.cur===o)cu=n;n++});skins={items:it,cur:cu,nid:n}}}
+load();normalize();
 const $=id=>document.getElementById(id);
 const pw=l=>Math.pow(2,l)-1; // stała wartość poziomu
 const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e4?(n/1e3).toFixed(1)+'k':Math.round(n);
@@ -35,7 +52,7 @@ const tier=hp=>Math.min(9,hp<=1?0:Math.floor(Math.log2(hp))+1);
 function blockColor(b,r){return b.hp<=0?null:TC[tier(b.hp)]}
 function render(){
  $('coins').textContent=fmt(coins);
- $('depth').textContent=topRow*2;$('acc').textContent=accLvl()+(pts()>0?'❗':'');$('crate').style.display=(acc.crates||0)>0?'':'none';$('crate').textContent=`🎁 Otwórz skrzynkę (${acc.crates||0})`;
+ const depth=topRow*2;$('depth').textContent=depth;if(depth>bestDepth){bestDepth=depth;sendBest(depth)}$('acc').textContent=accLvl()+(pts()>0?'❗':'');$('crate').style.display=(acc.crates||0)>0?'':'none';$('crate').textContent=`🎁 Otwórz skrzynkę (${acc.crates||0})`;
  const g=$('grid');g.innerHTML='';
  grid.forEach((l,i)=>{const c=document.createElement('div');c.className='c'+(sel===i?' sel':'');
   c.setAttribute('role','gridcell');c.onclick=()=>tap(i);
@@ -87,8 +104,8 @@ function renderMine(hit){
 let AC=null,muted=false;
 try{muted=localStorage.getItem('kopalnia-mute')==='1'}catch(e){}
 function ctx(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(AC&&AC.state==='suspended')AC.resume();return AC}
-function tone(f,d,type='sine',v=.15,to=null,delay=0){if(muted)return;const a=ctx();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d)}
-function noise(d,v=.25){if(muted)return;const a=ctx();if(!a)return;const n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=700;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(a.destination);s.start()}
+function tone(f,d,type='sine',v=.15,to=null,delay=0){if(muted||!ytAudio)return;const a=ctx();if(!a)return;const t=a.currentTime+delay,o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(a.destination);o.start(t);o.stop(t+d)}
+function noise(d,v=.25){if(muted||!ytAudio)return;const a=ctx();if(!a)return;const n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);const s=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=700;g.gain.value=v;s.buffer=b;s.connect(f);f.connect(g);g.connect(a.destination);s.start()}
 const sfx={
  click:()=>tone(500,.06,'square',.05),
  spawn:()=>tone(400,.1,'triangle',.15,800),
@@ -103,7 +120,11 @@ const spawnPrice=()=>Math.max(1,Math.round(4*pw(spawnLvl)*Math.max(0.5,1-0.08*ec
 const pasCost=()=>Math.round(70*Math.pow(2,econ.pas)),disCost=()=>Math.round(60*Math.pow(2.2,econ.dis));
 $('pas').onclick=()=>{const c=pasCost();if(busy||coins<c)return;coins-=c;econ.pas++;sfx.up();msg(`Pasywny dochód: +${econ.pas} monet co 2 sekundy`);render()};
 $('dis').onclick=()=>{const c=disCost();if(busy||econ.dis>=6||coins<c)return;coins-=c;econ.dis++;sfx.up();msg(`Nowe kulki kosztują teraz 🪙${spawnPrice()}`);render()};
-setInterval(()=>{if(econ.pas>0){coins+=Math.round(econ.pas*(1+0.05*(accLvl()-1)));$('coins').textContent=fmt(coins)}},2000);
+let passiveIv=null;
+function passiveTick(){if(paused||econ.pas<1)return;coins+=Math.round(econ.pas*(1+0.05*(accLvl()-1)));$('coins').textContent=fmt(coins)}
+function startPassive(){if(passiveIv==null)passiveIv=setInterval(passiveTick,2000)}
+function stopPassive(){if(passiveIv!=null){clearInterval(passiveIv);passiveIv=null}}
+startPassive();
 const sellPrice=l=>Math.max(1,Math.round(pw(l)*0.8));
 function splash(r,c,d){let e=0;[[r,c-1],[r,c+1],[r+1,c]].forEach(([rr,cc])=>{if(cc<0||cc>=COLS)return;const b=rowAt(rr)[cc];if(b.hp<=0)return;b.hp=Math.max(0,b.hp-d);if(b.hp<=0)e+=(1+Math.floor(rr/3))*(b.gem?6:1)});return e}
 $('blast').onclick=()=>{if(coins<blastCost)return;coins-=blastCost;sfx.up();blastLvl++;blastCost=Math.round(blastCost*2.3);msg('Upadające kulki wybuchają po bokach i w dół!');render()};
@@ -129,7 +150,7 @@ $('up').onclick=()=>{if(coins<upCost)return;coins-=upCost;sfx.up();spawnLvl++;up
  msg(`Nowe kulki startują od poz. ${spawnLvl}, ale kosztują już 🪙${spawnPrice()}`);render()};
 $('inc').onclick=()=>{if(coins<incCost)return;coins-=incCost;sfx.up();incLvl++;incCost=Math.round(incCost*2.2);msg(`Zarobki ×${incMul().toFixed(1)}`);render()};
 $('ren').onclick=()=>{if(coins<renCost||renChance()>=1)return;coins-=renCost;sfx.up();renLvl++;renCost=Math.round(renCost*2.1);msg(`Szansa odnowy: ${Math.round(renChance()*100)}%`);render()};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const sleep=ms=>new Promise(res=>{const step=()=>{paused?setTimeout(step,50):res()};setTimeout(step,ms)}); // wstrzymuje się razem z grą
 const setGone=on=>document.querySelectorAll('#app>.row,#sell,#drop,#crate').forEach(e=>e.classList.toggle('gone',on));
 function luckMsg(){const t=['Powodzenia! 🍀','Kop, kulko, kop! ⛏️','Niech spadają! 🎱','Do dzieła! 💪'];
  const d=document.createElement('div');d.id='luck';d.textContent=t[Math.floor(Math.random()*t.length)];document.body.appendChild(d);setTimeout(()=>d.remove(),1500)}
@@ -373,7 +394,9 @@ function mqConnect(){return new Promise((res,rej)=>{let i=0;
    res(c)});
   c.on('error',e=>{dbg('Błąd serwera: '+(e&&e.message||e));fail()})};
  next()})}
-async function mpPrep(){$('mpLog').textContent='';if(!armyList().length){mpMsg('Najpierw zdobądź jakieś kulki!');return false}
+async function mpPrep(){$('mpLog').textContent='';
+ if(IN_PLAY){mpMsg('Multiplayer nie jest dostępny w wersji gry na YouTube.');return false} // CSP Playables zabrania połączeń na zewnątrz
+ if(!armyList().length){mpMsg('Najpierw zdobądź jakieś kulki!');return false}
  mpClose();try{await loadMqtt()}catch(e){mpMsg('Nie udało się załadować biblioteki sieciowej.');return false}
  mp.id='k'+Math.random().toString(36).slice(2,10);
  mp.mine={a:armyList().map(L=>({L,am:1+0.08*acc.s.pow+perk('pow')/100,hm:1+0.06*acc.s.hp})),pw:{fire:war.fire+perk('fire'),slow:war.slow+perk('slow'),weak:war.weak}};
@@ -417,7 +440,7 @@ $('mpBtn').onclick=()=>{ctx();$('mpLog').textContent='';$('menu').classList.add(
 $('mpFind').onclick=mpFind;$('mpHost').onclick=mpHost;$('mpJoin').onclick=mpJoin;
 $('mpBack').onclick=()=>{mpClose();$('mp').classList.add('hide');openMenu()};
 function resetGame(){coins=30;spawnLvl=1;spawnCost=5;upCost=40;incLvl=0;incCost=60;renLvl=0;renCost=50;
- grid=Array(N*N).fill(0);rows=[];topRow=0;inv={};blastLvl=0;blastCost=80;bombs=0;bombCost=250;sel=null;busy=false;war={wave:1,fire:0,slow:0,weak:0};acc={xp:0,s:{pow:0,gain:0,luck:0,hp:0}};econ={pas:0,dis:0};skins={items:[],cur:null,nid:1}}
+ grid=Array(N*N).fill(0);rows=[];topRow=0;inv={};blastLvl=0;blastCost=80;bombs=0;bombCost=250;sel=null;busy=false;war={wave:1,fire:0,slow:0,weak:0};acc={xp:0,s:{pow:0,gain:0,luck:0,hp:0}};econ={pas:0,dis:0};skins={items:[],cur:null,nid:1};bestDepth=0}
 const hasProgress=()=>topRow>0||coins!==30||grid.some(x=>x)||spawnLvl>1||incLvl>0||renLvl>0||blastLvl>0||war.wave>1||acc.xp>0;
 function openMenu(){$('statsBtn').textContent='⭐ Statystyki'+(pts()>0?` (${pts()} pkt)`:'');$('play').textContent=hasProgress()?'Kontynuuj':'Graj';$('menu').classList.remove('hide');$('play').focus()}
 let wipeT=0;
@@ -429,6 +452,36 @@ $('play').onclick=()=>{ctx();$('menu').classList.add('hide');armWipe(false)};
 $('how').onclick=()=>$('rules').classList.toggle('show');
 $('menuBtn').onclick=()=>{if(!busy)openMenu()};
 $('wipe').onclick=()=>{if(!$('wipe').dataset.armed){armWipe(true);return}
- armWipe(false);resetGame();try{localStorage.removeItem(KEY)}catch(e){}
+ armWipe(false);resetGame();if(!IN_PLAY){try{localStorage.removeItem(KEY)}catch(e){}}
+ sendBest(0);
  msg('Postęp wyzerowany. Zaczynasz od nowa!');render();$('play').textContent='Graj'};
-updSnd();render();openMenu();
+// ---- YouTube Playables: pauza, audio, gotowość gry ----
+let warWasRunning=false;
+function pauseGame(){if(paused)return;paused=true;
+ warWasRunning=!!(fight&&fight.run&&!fight.over);
+ if(wTimer){clearInterval(wTimer);wTimer=null}
+ stopPassive();
+ try{if(document.getAnimations)document.getAnimations().forEach(a=>{try{a.pause()}catch(e){}})}catch(e){}
+ save();flushCloudSave()} // SHOULD: zapis stanu przed ewentualnym zamknięciem gry
+function resumeGame(){if(!paused)return;paused=false;startPassive();
+ if(warWasRunning&&fight&&!fight.over&&!wTimer)wTimer=setInterval(()=>{tick();renderWar()},100);warWasRunning=false;
+ try{if(document.getAnimations)document.getAnimations().forEach(a=>{try{a.play()}catch(e){}})}catch(e){}}
+const blockIfPaused=e=>{if(paused){e.stopPropagation();if(e.cancelable)e.preventDefault()}}; // nie reagujemy na wejście w pauzie
+['click','keydown','pointerdown','touchstart'].forEach(t=>document.addEventListener(t,blockIfPaused,true));
+async function boot(){
+ try{if(IN_PLAY)YG.game.firstFrameReady()}catch(e){} // zawsze przed gameReady()
+ if(IN_PLAY){
+  try{const raw=await cloudLoad();if(raw){const d=JSON.parse(raw);if(d&&typeof d==='object'){applySave(d);normalize()}}}catch(e){logWarn()}
+  try{ytAudio=YG.system.isAudioEnabled();YG.system.onAudioEnabledChange(v=>{ytAudio=!!v})}catch(e){}
+  try{YG.system.onPause(pauseGame);YG.system.onResume(resumeGame)}catch(e){}
+  try{YG.system.getLanguage().then(t=>{if(t)document.documentElement.lang=t}).catch(()=>{})}catch(e){}
+  $('mpBtn').style.display='none'; // bez zewnętrznych połączeń (CSP Playables)
+  $('snd').style.display='none';   // poziom dźwięku steruje YouTube — bez własnego przycisku wyciszenia
+  addEventListener('error',()=>{try{YG.health.logError()}catch(e){}});
+  addEventListener('unhandledrejection',()=>{try{YG.health.logError()}catch(e){}});
+ }
+ updSnd();render();openMenu();      // menu jest w pełni klikalne → dopiero teraz gra jest gotowa
+ sendBest(bestDepth||0);            // wynik wysyłany = najlepszy wynik zapisany w save
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{try{if(IN_PLAY)YG.game.gameReady()}catch(e){}}));
+}
+boot();

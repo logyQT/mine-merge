@@ -1,0 +1,449 @@
+{
+  "coins": 4820,
+  "spawnLvl": 4,
+  "spawnCost": 64,
+  "upCost": 320,
+  "incLvl": 2,
+  "incCost": 150,
+  "renLvl": 1,
+  "renCost": 100,
+  "grid": [
+    4,
+    0,
+    0,
+    3,
+    0,
+    0,
+    5,
+    0,
+    0,
+    0,
+    2,
+    0,
+    0,
+    0,
+    4,
+    0,
+    0,
+    3,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "rows": [
+    [
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 6,
+        "max": 6,
+        "gem": true
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      },
+      {
+        "hp": 3,
+        "max": 3,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 8,
+        "max": 8,
+        "gem": true
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      },
+      {
+        "hp": 4,
+        "max": 4,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": true
+      }
+    ],
+    [
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": true
+      },
+      {
+        "hp": 5,
+        "max": 5,
+        "gem": false
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": true
+      }
+    ],
+    [
+      {
+        "hp": 6,
+        "max": 6,
+        "gem": false
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": true
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": true
+      },
+      {
+        "hp": 6,
+        "max": 6,
+        "gem": false
+      },
+      {
+        "hp": 6,
+        "max": 6,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 14,
+        "max": 14,
+        "gem": true
+      },
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 14,
+        "max": 14,
+        "gem": true
+      },
+      {
+        "hp": 7,
+        "max": 7,
+        "gem": false
+      },
+      {
+        "hp": 14,
+        "max": 14,
+        "gem": true
+      }
+    ],
+    [
+      {
+        "hp": 8,
+        "max": 8,
+        "gem": false
+      },
+      {
+        "hp": 8,
+        "max": 8,
+        "gem": false
+      },
+      {
+        "hp": 8,
+        "max": 8,
+        "gem": false
+      },
+      {
+        "hp": 16,
+        "max": 16,
+        "gem": true
+      },
+      {
+        "hp": 8,
+        "max": 8,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 9,
+        "max": 9,
+        "gem": false
+      },
+      {
+        "hp": 9,
+        "max": 9,
+        "gem": false
+      },
+      {
+        "hp": 18,
+        "max": 18,
+        "gem": true
+      },
+      {
+        "hp": 9,
+        "max": 9,
+        "gem": false
+      },
+      {
+        "hp": 9,
+        "max": 9,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": false
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": false
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": false
+      },
+      {
+        "hp": 20,
+        "max": 20,
+        "gem": true
+      },
+      {
+        "hp": 10,
+        "max": 10,
+        "gem": false
+      }
+    ],
+    [
+      {
+        "hp": 24,
+        "max": 24,
+        "gem": true
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": false
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": false
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": false
+      },
+      {
+        "hp": 12,
+        "max": 12,
+        "gem": false
+      }
+    ]
+  ],
+  "topRow": 12,
+  "inv": {
+    "2": 2,
+    "3": 1,
+    "6": 1
+  },
+  "blastLvl": 1,
+  "blastCost": 160,
+  "bombs": 2,
+  "bombCost": 500,
+  "war": {
+    "wave": 3,
+    "fire": 1,
+    "slow": 0,
+    "weak": 0
+  },
+  "acc": {
+    "xp": 780,
+    "crates": 1,
+    "s": {
+      "pow": 2,
+      "gain": 1,
+      "luck": 1,
+      "hp": 1
+    }
+  },
+  "econ": {
+    "pas": 1,
+    "dis": 1
+  },
+  "skins": {
+    "items": [
+      {
+        "id": 1,
+        "theme": "crypto",
+        "rar": 1,
+        "perks": [
+          {
+            "t": "pow",
+            "q": 0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "theme": "planet",
+        "rar": 0,
+        "perks": [
+          {
+            "t": "luck",
+            "q": 0
+          }
+        ]
+      }
+    ],
+    "cur": 2,
+    "nid": 3
+  },
+  "bestDepth": 24
+}

@@ -1,0 +1,17 @@
+{
+  "coins": 1500,
+  "spawnLvl": 3,
+  "spawnCost": 32,
+  "upCost": 160,
+  "incLvl": 1,
+  "incCost": 90,
+  "renLvl": 0,
+  "renCost": 50,
+  "grid": [3, 0, 2, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "topRow": 5,
+  "inv": { "2": 1 },
+  "war": { "wave": 2, "fire": 0, "slow": 0, "weak": 0 },
+  "acc": { "xp": 210 },
+  "skins": { "owned": ["def", "crypto", "planet"], "cur": "planet" },
+  "bestDepth": 10
+}

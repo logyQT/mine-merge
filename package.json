@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 8080",
+    "dev:yt": "cross-env PLATFORM=yt vite --port 8080",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

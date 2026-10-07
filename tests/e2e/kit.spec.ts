@@ -146,6 +146,25 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   expect(errors).toEqual([]);
 });
 
+test('multiplayer: screen opens with army info and returns to menu', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedSave(page); // the fixture brings 5 fighting balls
+  await gotoKit(page); // boot menu open — mp launches from here
+
+  await page.getByRole('button', { name: 'Multiplayer' }).click();
+  await expect(page.locator('#mp')).toBeVisible();
+  await expect(page.locator('#mpInfo')).toHaveText(
+    'Do walki idzie twoich 5 najsilniejszych kulek (maks. 5). Przegrana nie odbiera kulek.',
+  );
+  await expect(page.locator('#mpMsg')).toHaveText('');
+  await expect(page.locator('#mpLog')).not.toHaveText(''); // dbg('') entry logged
+  // Note: Find/Host/Join are not clicked — they hit live MQTT brokers.
+
+  await page.getByRole('button', { name: 'Wróć do menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 const VIEWPORTS = [
   { width: 360, height: 640 },
   { width: 800, height: 600 },

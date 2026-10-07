@@ -468,6 +468,19 @@ export function wLog(t: string): void {
   $('wLog').textContent = t;
 }
 
+// ---- multiplayer screen (legacy dbg / mpMsg, lines 377–378) ----
+
+export function mpDbg(t: string): void {
+  const l = $('mpLog');
+  l.textContent += `[${new Date().toLocaleTimeString()}] ${t}\n`;
+  l.scrollTop = l.scrollHeight;
+}
+
+export function mpMsg(t: string): void {
+  $('mpMsg').textContent = t;
+  mpDbg(t);
+}
+
 /** One army row: ball + HP bar + burn/slow/weak markers (legacy row()). */
 function warRow(s: GameState, arr: Combatant[]): string {
   return arr

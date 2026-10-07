@@ -36,7 +36,8 @@ import {
   type SkinItem,
   type WarPowerKey,
 } from './core/state';
-import { prepareFight, tick, wcost, wEnd, type Fight } from './core/war';
+import { createNet, type Net } from './mp';
+import { prepareFight, tick, wcost, wEnd, armyList, mk, type Fight, type Power } from './core/war';
 import type { Platform } from './platform/types';
 import {
   $,
@@ -63,6 +64,8 @@ import {
   stripReset,
   stripSpinTo,
   stripWin,
+  mpDbg,
+  mpMsg,
   updSnd,
   wLog,
   type Handlers,
@@ -648,8 +651,13 @@ function stopWarTimer(): void {
   }
 }
 
+function startTicker(): void {
+  stopWarTimer();
+  wTimer = setInterval(tickOnce, 100);
+}
+
 function renderWarView(): void {
-  renderWar(state, fight, false); // mpOn: true lands with the multiplayer slice
+  renderWar(state, fight, mp.on);
 }
 
 function tickOnce(): void {
@@ -657,7 +665,10 @@ function tickOnce(): void {
   const ev = tick(state, fight, rng);
   for (let i = 0; i < ev.hits; i++) sfx.hit(); // legacy tick called sfx per attack
   for (let i = 0; i < ev.kills; i++) sfx.brk();
-  if (ev.done) endFight(ev.done.playerWon);
+  if (ev.done) {
+    if (fight.pvp) mpEnd(fight, ev.done.pa, ev.done.ea); // legacy line 253
+    else endFight(ev.done.playerWon);
+  }
   renderWarView();
 }
 
@@ -688,6 +699,10 @@ function bindWar(): void {
     prepareWar();
   };
   btn('wGo').onclick = () => {
+    if (mp.on) {
+      if (fight && fight.over) mpLeave();
+      return;
+    }
     if (!fight || fight.over) {
       prepareWar();
       return;
@@ -695,7 +710,7 @@ function bindWar(): void {
     if (!fight.run) {
       fight.run = true;
       wLog('Bitwa!');
-      wTimer = setInterval(tickOnce, 100);
+      startTicker();
       renderWarView();
     }
   };
@@ -716,10 +731,278 @@ function bindWar(): void {
     };
   });
   btn('wBack').onclick = () => {
+    mpClose();
     stopWarTimer();
     fight = null;
     hide('war');
     refresh();
+    openMenu();
+  };
+}
+
+// ---- multiplayer (legacy lines 376–441) ----
+// The MQTT transport (CDN + wss brokers) lives in src/mp.ts and is only
+// instantiated for non-YT builds — Playables' CSP forbids those servers.
+
+interface MpArmy {
+  a: Array<{ L: number; am: number; hm: number }>;
+  pw: Power;
+}
+
+const mp = {
+  on: false,
+  isHost: false,
+  mine: null as MpArmy | null,
+  opp: null as MpArmy | null,
+  oppName: '',
+  started: false,
+  iv: null as ReturnType<typeof setInterval> | null,
+  seekIv: null as ReturnType<typeof setInterval> | null,
+  searching: false,
+  room: null as string | null,
+};
+
+let net: Net | null = null;
+
+function mpClose(): void {
+  if (mp.iv !== null) clearInterval(mp.iv);
+  if (mp.seekIv !== null) clearInterval(mp.seekIv);
+  mp.searching = false;
+  if (net?.connected()) {
+    if (mp.room && mp.opp) net.pub(mp.room, { t: 'bye' });
+    net.close();
+  }
+  mp.room = null;
+  mp.on = false;
+  mp.started = false;
+  mp.opp = null;
+}
+
+function mpLeave(): void {
+  mpClose();
+  stopWarTimer();
+  fight = null;
+  hide('war');
+  refresh();
+  openMenu();
+}
+
+async function mpPrep(): Promise<boolean> {
+  $('mpLog').textContent = '';
+  if (!armyList(state).length) {
+    mpMsg('Najpierw zdobądź jakieś kulki!');
+    return false;
+  }
+  if (!net) return false; // no transport (YT builds never reach here)
+  mpClose();
+  if (!(await net.loadLibrary())) {
+    mpMsg('Nie udało się załadować biblioteki sieciowej.');
+    return false;
+  }
+  mp.mine = {
+    a: armyList(state).map((L) => ({
+      L,
+      am: 1 + 0.08 * state.acc.s.pow + perk(state, 'pow', rng) / 100,
+      hm: 1 + 0.06 * state.acc.s.hp,
+    })),
+    pw: {
+      fire: state.war.fire + perk(state, 'fire', rng),
+      slow: state.war.slow + perk(state, 'slow', rng),
+      weak: state.war.weak,
+    },
+  };
+  if (!(await net.connect())) {
+    mpMsg('Nie udało się połączyć z żadnym serwerem pośredniczącym. Sprawdź internet albo spróbuj później.');
+    return false;
+  }
+  return true;
+}
+
+function mpRoom(code: string, isHost: boolean, maxN: number, onFail?: () => void): void {
+  if (!net || !mp.mine) return;
+  const n = net;
+  const mine = mp.mine;
+  const room = 'room/' + code;
+  mp.isHost = isHost;
+  mp.room = room;
+  mp.opp = null;
+  mp.started = false;
+  const hello = (): void => {
+    n.pub(room, {
+      t: 'hello',
+      host: isHost,
+      a: mine.a,
+      pw: mine.pw,
+      name: `Gracz ⭐${accLvl(state)}`,
+    });
+  };
+  n.sub(room, (d) => {
+    if (d.t === 'hello') {
+      if (d.host === isHost || mp.started) return;
+      mp.opp = { a: d.a!, pw: d.pw! };
+      mp.oppName = d.name!;
+      mpDbg('Przeciwnik w pokoju: ' + d.name);
+      if (isHost) {
+        hello();
+        const seed = Math.floor(rng() * 1e6);
+        mp.started = true;
+        const go = (): void => n.pub(room, { t: 'go', seed, to: d.from });
+        go();
+        setTimeout(go, 700);
+        setTimeout(go, 1500);
+        mpBegin(seed);
+      }
+    } else if (d.t === 'go' && !isHost && d.to === n.id && mp.opp && !mp.started) {
+      mp.started = true;
+      mpBegin(d.seed!);
+    } else if (d.t === 'bye' && mp.on && fight && !fight.over) {
+      stopWarTimer();
+      fight.over = true;
+      gainXp(20);
+      requestSave();
+      wLog('Przeciwnik opuścił grę — wygrywasz walkowerem! (+20 XP)');
+      renderWarView();
+    }
+  });
+  hello();
+  if (mp.iv !== null) clearInterval(mp.iv);
+  let cnt = 0;
+  mp.iv = setInterval(() => {
+    if (mp.started) {
+      if (mp.iv !== null) clearInterval(mp.iv);
+      return;
+    }
+    if (++cnt > maxN) {
+      if (mp.iv !== null) clearInterval(mp.iv);
+      if (onFail) onFail();
+      else mpMsg(isHost ? 'Nikt nie dołączył. Spróbuj ponownie.' : 'Nie ma takiego pojedynku albo przeciwnik już wyszedł. Sprawdź kod.');
+      return;
+    }
+    hello();
+  }, 1500);
+}
+
+function mpBegin(seed: number): void {
+  if (mp.seekIv !== null) clearInterval(mp.seekIv);
+  mp.searching = false;
+  const A = (mp.isHost ? mp.mine : mp.opp)!;
+  const B = (mp.isHost ? mp.opp : mp.mine)!;
+  fight = {
+    p: A.a.map((b, i) => mk(b.L, b.am, b.hm, (seed * 31 + i * 97) % 500, rng)),
+    e: B.a.map((b, i) => mk(b.L, b.am, b.hm, (seed * 31 + i * 97 + 53) % 500, rng)),
+    pw: { p: A.pw, e: B.pw },
+    pvp: true,
+    flip: !mp.isHost,
+    eLvl: 1,
+    over: false,
+    run: true,
+  };
+  mp.on = true;
+  hide('mp');
+  show('war');
+  startTicker();
+  renderWarView();
+  wLog(`Pojedynek z: ${mp.oppName}`);
+}
+
+function mpEnd(f: Fight, pa: boolean, ea: boolean): void {
+  stopWarTimer();
+  f.over = true;
+  const draw = !pa && !ea;
+  const win = f.flip ? !pa && ea : pa && !ea;
+  if (draw) wLog('Remis!');
+  else if (win) {
+    const r = Math.round(40 * (1 + accLvl(state) * 0.5));
+    state.coins += r;
+    gainXp(60);
+    sfx.coin();
+    wLog(`Wygrywasz pojedynek! +🪙${r}, +60 XP`);
+  } else {
+    state.coins += 10;
+    gainXp(15);
+    wLog('Przegrana w pojedynku. +🪙10, +15 XP (kulki bezpieczne)');
+  }
+  requestSave();
+  renderWarView();
+}
+
+async function mpHost(): Promise<void> {
+  if (!(await mpPrep())) return;
+  const code = Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(rng() * 31)]).join('');
+  mpRoom(code, true, 80);
+  mpMsg(`Twój kod: ${code} — przekaż go przeciwnikowi i czekaj…`);
+}
+
+async function mpJoin(): Promise<void> {
+  const code = ($('mpCode') as HTMLInputElement).value.trim().toUpperCase();
+  if (!code) {
+    mpMsg('Wpisz kod pojedynku.');
+    return;
+  }
+  if (!(await mpPrep())) return;
+  mpMsg('Łączenie z pojedynkiem ' + code + '…');
+  mpRoom(code, false, 20);
+}
+
+async function mpFind(): Promise<void> {
+  if (!(await mpPrep())) return;
+  const n = net;
+  if (!n) return;
+  mp.searching = true;
+  mpMsg('Szukam przeciwnika…');
+  let matched = false;
+  const end = Date.now() + 60000;
+  mp.seekIv = setInterval(() => {
+    if (matched) return;
+    if (Date.now() > end) {
+      mpMsg('Nie znaleziono przeciwnika. Spróbuj ponownie albo użyj kodu.');
+      mpClose();
+      return;
+    }
+    n.pub('lobby', { t: 'seek' });
+  }, 2000);
+  n.pub('lobby', { t: 'seek' });
+  const enter = (room: string, host: boolean): void => {
+    matched = true;
+    mpMsg('Znaleziono przeciwnika! Łączenie…');
+    mpRoom(room, host, host ? 12 : 20, () => {
+      if (!mp.searching) return;
+      matched = false;
+      n.unsubscribe(mp.room ?? '');
+      mp.room = null;
+      mpMsg('Szukam przeciwnika…');
+    });
+  };
+  n.sub('lobby', (d) => {
+    if (matched || !mp.searching) return;
+    if (d.t === 'seek' && n.id < (d.from ?? '')) {
+      const room = Math.random().toString(36).slice(2, 8);
+      n.pub('lobby', { t: 'match', to: d.from, room });
+      enter(room, true);
+    } else if (d.t === 'match' && d.to === n.id) {
+      enter(d.room ?? '', false);
+    }
+  });
+}
+
+function bindMp(): void {
+  btn('mpBtn').onclick = () => {
+    warmAudio();
+    $('mpLog').textContent = '';
+    hide('menu');
+    show('mp');
+    mpMsg('');
+    const army = armyList(state);
+    btn('mpInfo').textContent = army.length
+      ? `Do walki idzie twoich ${army.length} najsilniejszych kulek (maks. 5). Przegrana nie odbiera kulek.`
+      : 'Nie masz jeszcze kulek. Połącz je w kopalni.';
+  };
+  btn('mpFind').onclick = () => void mpFind();
+  btn('mpHost').onclick = () => void mpHost();
+  btn('mpJoin').onclick = () => void mpJoin();
+  btn('mpBack').onclick = () => {
+    mpClose();
+    hide('mp');
     openMenu();
   };
 }
@@ -787,7 +1070,12 @@ export function startApp(p: Platform): void {
   bindCrate();
   bindShop();
   bindWar();
-  // mpBtn stays unwired until the multiplayer slice (hidden in index.html).
+  // Compile-time platform gate: no MQTT transport, no mp handlers on YT
+  // (legacy hid mpBtn behind IN_PLAY — PLAN wants it tree-shaken instead).
+  if (__PLATFORM__ !== 'yt') {
+    net = createNet(mpDbg);
+    bindMp();
+  }
 
   (['click', 'keydown', 'pointerdown', 'touchstart'] as const).forEach((t) =>
     document.addEventListener(t, blockIfPaused, true),
@@ -803,5 +1091,9 @@ export function startApp(p: Platform): void {
   window.addEventListener('pagehide', flushSave);
   p.sendScore(state.bestDepth || 0);
 
-  if (__PLATFORM__ === 'yt') btn('snd').style.display = 'none'; // legacy IN_PLAY: platform owns audio
+  if (__PLATFORM__ === 'yt') {
+    // Legacy IN_PLAY: the platform owns audio; no external connections (CSP).
+    btn('snd').style.display = 'none';
+    btn('mpBtn').style.display = 'none';
+  }
 }

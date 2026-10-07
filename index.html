@@ -37,11 +37,11 @@
    <h1>Łącz i kop</h1>
    <p style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
    <button id="play" style="background:#27b36a;font-size:22px;padding:16px"></button>
-   <!-- Hidden until its slice: multiplayer. -->
    <button id="warBtn" style="background:#d98a1f;font-size:20px">⚔ Wojna kulek</button>
    <button id="statsBtn" style="background:#c24a8a">⭐ Statystyki</button>
    <button id="shopBtn" style="background:#2a9bb5">🛍 Sklep ze skinami</button>
-   <button id="mpBtn" style="background:#2f8f5a;display:none">🌐 Multiplayer</button>
+   <!-- Hidden on YT builds at runtime (legacy IN_PLAY): Playables CSP forbids the MQTT servers. -->
+   <button id="mpBtn" style="background:#2f8f5a">🌐 Multiplayer</button>
    <button id="how" style="background:var(--btn)">Jak grać</button>
    <div id="rules">
     <p>Dotknij kulkę, potem drugą o tym samym poziomie, by je połączyć. Wyższy poziom to większa siła.</p>
@@ -65,6 +65,16 @@
    </div>
    <p style="font-size:12px">🔥 podpala wrogów (obrażenia z czasem) · ❄ spowalnia ich ataki · ☠ po zniszczeniu wroga osłabia pozostałych. Do walki idzie 5 twoich najsilniejszych kulek z planszy i ekwipunku. Za porażkę masz 50% szans na utratę jednej losowej kulki z walczących. Przeciwnik jest losowany w granicach ±3 poziomów od twojego poziomu konta (⭐ rośnie z kopania i wygranych).</p>
    <button id="wBack" style="background:#7a5a9e">Wróć do menu</button>
+  </div></div>
+  <div id="mp" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:26px">🌐 Multiplayer</h1>
+   <div id="mpInfo" style="font-size:13px"></div>
+   <button id="mpFind" style="background:#27b36a">🔍 Szukaj losowego przeciwnika</button>
+   <button id="mpHost" style="background:#d98a1f">🔑 Utwórz pojedynek (kod)</button>
+   <div class="row"><input id="mpCode" maxlength="5" placeholder="KOD" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-weight:800;text-transform:uppercase;text-align:center;border-radius:12px;border:0;padding:10px"><button id="mpJoin" style="background:var(--btn)">Dołącz</button></div>
+   <div id="mpMsg" style="min-height:40px;font-weight:700"></div>
+   <div id="mpLog" style="font-size:11px;text-align:left;opacity:.85;max-height:130px;overflow:auto;white-space:pre-wrap"></div>
+   <button id="mpBack" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="stats" class="hide"><div class="mbox" style="margin:auto">
    <h1 style="font-size:28px">⭐ Statystyki</h1>

@@ -1,0 +1,18 @@
+/* Kit-wide layout: the Phaser canvas fills the viewport (Scale.RESIZE reads
+   the parent's size), so state survives resize by construction. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #101828;
+  overscroll-behavior: none;
+}
+
+#app {
+  position: absolute;
+  inset: 0;
+}
+
+#app canvas {
+  display: block;
+}

@@ -1,8 +1,10 @@
 // Bootstrap entry point: pick the platform for this build, run the boot
-// sequence, show progress, and (locally only) mount the debug HUD.
-// Phaser boot lands here in Part 2 / Phase 1 — see PLAN.md.
+// sequence (init → first frame → load save → start Phaser → ready), show
+// progress, and (locally only) mount the debug HUD.
 
+import './style.css';
 import { boot } from './boot';
+import { startGame } from './game';
 import { createPlatform } from './platform/detect';
 import { isDebugPlatform, mountDebugHud } from './platform/debug-hud';
 
@@ -21,6 +23,7 @@ const platform = createPlatform();
 
 boot(platform, {
   onProgress: showProgress,
+  startGame: () => startGame(),
   onSave: (raw) => {
     // TODO(Phase 2): hand off to core/save.ts applySave().
     if (raw) console.debug(`save loaded (${raw.length} B)`);

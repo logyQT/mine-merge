@@ -49,6 +49,9 @@ function injectYtSdk(): Plugin {
 const headers = PLATFORM === 'yt' ? { 'Content-Security-Policy': YT_CSP } : {};
 
 export default defineConfig({
+  // Certification requires relative paths only (Playables technical
+  // requirements) — the uploaded ZIP may not be served from the domain root.
+  base: './',
   define: {
     __PLATFORM__: JSON.stringify(PLATFORM),
     'import.meta.env.PLATFORM': JSON.stringify(PLATFORM),

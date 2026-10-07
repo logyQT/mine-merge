@@ -43,6 +43,7 @@ import { prepareFight, tick, wcost, wEnd, armyList, mk, type Fight, type Power }
 import type { Platform } from './platform/types';
 import { flyBall, renderMine, type Handlers, type Ui } from './ui/board';
 import { $, btn, luckMsg, msg, render, setGone, updSnd } from './ui/hud';
+import { setWarOpen } from './ui/war-canvas';
 import {
   cellHtml,
   CW,
@@ -701,6 +702,7 @@ function bindWar(): void {
     sfx.click();
     hide('menu');
     show('war');
+    setWarOpen(true); // canvas above the overlay before the first draw
     prepareWar();
   };
   btn('wGo').onclick = () => {
@@ -740,6 +742,7 @@ function bindWar(): void {
     stopWarTimer();
     fight = null;
     hide('war');
+    setWarOpen(false); // hand the canvas back to the board first
     refresh();
     openMenu();
   };
@@ -788,6 +791,7 @@ function mpLeave(): void {
   stopWarTimer();
   fight = null;
   hide('war');
+  setWarOpen(false);
   refresh();
   openMenu();
 }
@@ -905,6 +909,7 @@ function mpBegin(seed: number): void {
   mp.on = true;
   hide('mp');
   show('war');
+  setWarOpen(true);
   startTicker();
   renderWarView();
   wLog(`Pojedynek z: ${mp.oppName}`);

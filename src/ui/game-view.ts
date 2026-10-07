@@ -17,9 +17,10 @@ import { curItem, curRar, curSkin, CRATES, itName, itVal, ownedMax, PCOUNT, PERK
 import { accLvl, fmt, pts, pw, spent } from '../core/economy';
 import type { Rng } from '../core/rng';
 import type { AccStats, GameState, Perk, SkinItem, WarPowerKey } from '../core/state';
-import { type Combatant, type Fight, wcost } from '../core/war';
+import { type Fight, wcost } from '../core/war';
 import { $, btn } from './hud';
 import { color } from './palette';
+import { warLog, warRender } from './war-canvas';
 
 // ---- skin styling (legacy stFor/bSt/skBg/skSym/bIn) ----
 
@@ -244,8 +245,10 @@ export function renderContBody(): void {
 
 // ---- war screen (legacy lines 211–230) ----
 
+// The battle log and both army rows render on the canvas (Phase 4 WarScene);
+// the shell around them (#wInfo, buttons, help) stays DOM — the i18n surface.
 export function wLog(t: string): void {
-  $('wLog').textContent = t;
+  warLog(t);
 }
 
 // ---- multiplayer screen (legacy dbg / mpMsg, lines 377–378) ----
@@ -261,16 +264,6 @@ export function mpMsg(t: string): void {
   mpDbg(t);
 }
 
-/** One army row: ball + HP bar + burn/slow/weak markers (legacy row()). */
-function warRow(s: GameState, arr: Combatant[]): string {
-  return arr
-    .map(
-      (b) =>
-        `<div class="wb${b.hp <= 0 ? ' dead' : ''}"><div class="it" style="${bSt(s, b.L)}">${bIn(s, b.L)}</div><div class="hp"><i style="width:${Math.max(0, (b.hp / b.max) * 100)}%"></i></div><div>${b.burn > 0 ? '🔥' : ''}${b.slow > 0 ? '❄' : ''}${b.wk > 0 ? '☠' : ''}&nbsp;</div></div>`,
-    )
-    .join('');
-}
-
 const WAR_UPGRADES: Array<[string, string, WarPowerKey]> = [
   ['pFire', '🔥 Podpalenie', 'fire'],
   ['pSlow', '❄ Spowolnienie', 'slow'],
@@ -279,10 +272,7 @@ const WAR_UPGRADES: Array<[string, string, WarPowerKey]> = [
 
 export function renderWar(s: GameState, fight: Fight | null, mpOn: boolean): void {
   $('wInfo').textContent = `⭐ Poziom konta ${accLvl(s)} · Wygrane: ${s.war.wave - 1} · 🪙${s.coins}`;
-  const fT = fight && (fight.flip ? fight.p : fight.e);
-  const fB = fight && (fight.flip ? fight.e : fight.p);
-  $('eRow').innerHTML = fT ? warRow(s, fT) : '';
-  $('pRow').innerHTML = fB ? warRow(s, fB) : '';
+  warRender(s, fight); // army rows (#eRow/#pRow) on the canvas (Phase 4)
   const live = !!(fight && fight.run && !fight.over);
   btn('wGo').textContent = !fight ? 'Odśwież' : fight.over ? 'Dalej' : live ? 'Walka trwa…' : 'Walka!';
   btn('wGo').disabled = live;

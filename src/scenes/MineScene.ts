@@ -147,6 +147,9 @@ export class MineScene extends Phaser.Scene {
       render: (s, ui, h, rng) => this.renderBoard(s, ui, h, rng),
       renderMine: (s, rng, hit) => this.renderMineOnly(s, rng, hit),
       flyBall: (s, i, c, r, L, rng) => this.flyBall(s, i, c, r, L, rng),
+      // Phase 4: setWarOpen() hides the board while the canvas is lifted
+      // above the #war overlay (it would paint over the war view).
+      setVisible: (v) => this.scene.setVisible(v),
     });
   }
 

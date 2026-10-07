@@ -149,9 +149,24 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   await seedSave(page); // the fixture brings balls to fight with
   await gotoKit(page); // boot menu is open — war launches from here
 
+  // Phase 4: the battle log is canvas-drawn (WarScene) — #wLog stays an
+  // empty spacer, so suites read the text through the local-only hook.
+  const warLog = async (): Promise<string> => (await page.evaluate(() => globalThis.__warLog)) ?? '';
+
   await page.getByRole('button', { name: 'Wojna' }).click();
   await expect(page.locator('#war')).toBeVisible();
-  await expect(page.locator('#wLog')).toContainText('Wróg poz.'); // prepareFight rolled
+  await expect.poll(warLog).toContain('Wróg poz.'); // prepareFight rolled
+
+  // The opaque #war overlay would hide the canvas, so #app.canvas-top lifts
+  // it above (z-index 20) with pointer-events:none — DOM buttons keep the
+  // clicks — and the row/log spacers carry the legacy heights (probed:
+  // .wb 73px no markers, #wLog min-height 34).
+  await expect(page.locator('#app')).toHaveClass(/canvas-top/);
+  const canvas = page.locator('#app canvas');
+  expect(await canvas.evaluate((el) => getComputedStyle(el).zIndex)).toBe('20');
+  expect(await canvas.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+  await expect(page.locator('#eRow')).toHaveCSS('height', '73px');
+  await expect(page.locator('#wLog')).toHaveCSS('height', '34px');
 
   // Buy one war upgrade (fixture has coins): 100 → next costs 220.
   await page.locator('#pSlow').click();
@@ -160,14 +175,16 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   // Start the fight, wait for a verdict, then roll the next battle.
   await expect(page.locator('#wGo')).toHaveText('Walka!');
   await page.locator('#wGo').click();
-  await expect(page.locator('#wLog')).toHaveText('Bitwa!');
-  await expect(page.locator('#wLog')).toContainText(/Zwycięstwo!|Porażka/, { timeout: 30000 });
+  await expect.poll(warLog).toBe('Bitwa!');
+  await expect.poll(warLog, { timeout: 30000 }).toMatch(/Zwycięstwo!|Porażka/);
   await expect(page.locator('#wGo')).toHaveText('Dalej');
   await page.locator('#wGo').click();
-  await expect(page.locator('#wLog')).toContainText('Wróg poz.');
+  await expect.poll(warLog).toContain('Wróg poz.');
 
   await page.getByRole('button', { name: 'Wróć do menu' }).click();
   await expect(page.locator('#menu')).toBeVisible();
+  // The canvas is handed back to the board scene (.canvas-top removed).
+  await expect(page.locator('#app')).not.toHaveClass(/canvas-top/);
   expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -19,6 +19,9 @@ export class BootScene extends Phaser.Scene {
     generateMineTextures(this.textures);
     prewarmBallTextures(this.textures);
     // Textures are synchronous — hand over to the board scene immediately.
+    // War (Phase 4) boots in parallel behind its hidden #war overlay and
+    // registers with the canvas facade until the screen opens.
+    this.scene.launch('War');
     this.scene.start('Mine');
   }
 }

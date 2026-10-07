@@ -4,36 +4,23 @@
 
 import type { Platform } from './types';
 
-/** Minimal SDK shape used by the kit. Replace with the official
- *  types/ytgame.d.ts once downloaded (PLAN.md §1.1). */
+/** Structural subset of the official ytgame SDK (types/ytgame.d.ts) that
+ *  this adapter consumes. Derived from the vendored definitions with Pick,
+ *  so a signature change there fails typecheck here. Tests inject fakes. */
 export interface YtGame {
   IN_PLAYABLES_ENV?: boolean;
-  game: {
-    firstFrameReady(): void;
-    gameReady(): void;
-    loadData(): Promise<string | null | undefined>;
-    saveData(data: string): Promise<void>;
-  };
-  system: {
-    isAudioEnabled(): boolean;
-    onAudioEnabledChange(cb: (on: boolean) => void): void;
-    onPause(cb: () => void): void;
-    onResume(cb: () => void): void;
-    getLanguage(): Promise<string>;
-  };
-  engagement: {
-    sendScore(s: { value: number }): void | Promise<void>;
-  };
-  health: {
-    logWarning(): void;
-    logError(): void;
-  };
+  game: Pick<typeof ytgame.game, 'firstFrameReady' | 'gameReady' | 'loadData' | 'saveData'>;
+  system: Pick<
+    typeof ytgame.system,
+    'isAudioEnabled' | 'onAudioEnabledChange' | 'onPause' | 'onResume' | 'getLanguage'
+  >;
+  engagement: Pick<typeof ytgame.engagement, 'sendScore'>;
+  health: Pick<typeof ytgame.health, 'logWarning' | 'logError'>;
 }
-
-declare const ytgame: YtGame | undefined;
 
 function sdkFromGlobal(): YtGame | undefined {
   try {
+    // typeof-guard: the global is absent outside the Playables environment.
     return typeof ytgame !== 'undefined' ? ytgame : undefined;
   } catch {
     return undefined;
@@ -140,14 +127,23 @@ export function createYtPlatform(sdk: YtGame | undefined = sdkFromGlobal()): Pla
     },
 
     sendScore(value) {
-      guard(() => sdk?.engagement.sendScore({ value: Math.max(0, Math.round(value || 0)) }));
+      guard(() => {
+        const sent = sdk?.engagement.sendScore({
+          value: Math.max(0, Math.round(value || 0)),
+        });
+        // Official sendScore() rejects with SdkError (types/ytgame.d.ts) —
+        // attach a handler so a failure can never become an unhandled
+        // rejection; legacy treated score reporting as best-effort too.
+        void Promise.resolve(sent).catch(() => guard(() => sdk?.health.logWarning()));
+      });
     },
     logWarning(msg) {
       void msg; // ytgame.health.logWarning() takes no arguments
       guard(() => sdk?.health.logWarning());
     },
 
-    // TODO(Part 2, Phase 5): port the ad API; graceful no-ops until then.
+    // TODO(Part 2, Phase 5): port ytgame.ads.requestInterstitialAd() /
+    // requestRewardedAd(rewardId); graceful no-ops until then.
     async requestInterstitial() {
       /* no-op */
     },

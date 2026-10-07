@@ -122,6 +122,14 @@ describe('yt platform', () => {
     expect(sdk.engagement.sendScore).toHaveBeenNthCalledWith(2, { value: 13 });
   });
 
+  it('tolerates a rejected sendScore (official API rejects with SdkError)', async () => {
+    const sdk = fakeSdk();
+    sdk.engagement.sendScore.mockRejectedValueOnce(new Error('boom'));
+    const p = createYtPlatform(sdk);
+    p.sendScore(7); // handler attached synchronously → no unhandled rejection
+    await vi.waitFor(() => expect(sdk.health.logWarning).toHaveBeenCalled());
+  });
+
   it('keeps ads disabled until the ad API is ported', async () => {
     const p = createYtPlatform(fakeSdk());
     expect(p.features.ads).toBe(false);

@@ -71,6 +71,24 @@ describe('boot', () => {
     expect(p.progress).toEqual([0, 100]);
     expect(loaded).toBe('cloud');
   });
+
+  it('awaits startGame (first painted frame) before markReady', async () => {
+    const p = recordingPlatform();
+    const calls = p.calls;
+    let painted = false;
+    await boot(p, {
+      startGame: async () => {
+        // Simulate Phaser resolving on the first POST_RENDER.
+        await Promise.resolve();
+        calls.push('painted');
+        painted = true;
+      },
+    });
+    expect(painted).toBe(true);
+    expect(calls).toEqual(['init', 'firstFrame', 'loadSave', 'painted', 'ready']);
+    // ready must never precede the painted frame (YT: gameReady after paint)
+    expect(calls.indexOf('ready')).toBeGreaterThan(calls.indexOf('painted'));
+  });
 });
 
 describe('debug hud', () => {

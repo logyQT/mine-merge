@@ -7,10 +7,13 @@ import { JSDOM } from 'jsdom';
 // without touching the game code. It acts as the "oracle" — the tests pin
 // applySave()/normalize()/save() behavior BEFORE the refactor (PLAN Phase 0).
 // In Phase 1/2 the same suite gets retargeted to src/core/save.ts (TS).
+//
+// The legacy app lives in legacy/ (moved when Part 1 scaffolding took over the
+// repo root); the files themselves are untouched.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
-const appSource = readFileSync(join(ROOT, 'app.js'), 'utf8');
+const html = readFileSync(join(ROOT, 'legacy', 'index.html'), 'utf8');
+const appSource = readFileSync(join(ROOT, 'legacy', 'app.js'), 'utf8');
 
 export const SAVE_KEY = 'kopalnia-save-v1';
 

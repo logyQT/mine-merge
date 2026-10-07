@@ -4,12 +4,21 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "dev": "vite --port 8080",
+    "dev:yt": "cross-env PLATFORM=yt vite --port 8080",
+    "build:yt": "cross-env PLATFORM=yt vite build --outDir dist/yt && node scripts/check-budget.mjs dist/yt",
+    "build:web": "cross-env PLATFORM=portal vite build --outDir dist/web && node scripts/check-budget.mjs dist/web",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "fixture:gen": "node scripts/gen-save-fixture.mjs"
   },
   "devDependencies": {
+    "@types/node": "^26.6.4",
+    "cross-env": "^10.1.0",
     "jsdom": "^30.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
     "vitest": "^5.0.3"
   }
 }

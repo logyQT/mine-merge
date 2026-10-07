@@ -21,9 +21,28 @@ function showProgress(pct: number): void {
 
 const platform = createPlatform();
 
+// Local-only handle for the Playwright e2e suite (tests/e2e). The
+// __PLATFORM__ guard tree-shakes it out of yt/portal builds.
+if (__PLATFORM__ === 'local' && isDebugPlatform(platform)) {
+  globalThis.__platform = platform;
+}
+
 boot(platform, {
   onProgress: showProgress,
-  startGame: () => startGame(),
+  startGame: async () => {
+    const game = await startGame();
+    // Kit lifecycle wiring (PLAN DoD): platform pause freezes the game loop,
+    // resume restarts it, and sound output follows the platform's audio flag.
+    platform.onPause(() => game.loop.sleep());
+    platform.onResume(() => game.loop.wake());
+    game.sound.mute = !platform.isAudioEnabled();
+    platform.onAudioChange((on) => {
+      game.sound.mute = !on;
+    });
+    // Tree-shaken out of non-local builds, like the __platform handle above.
+    if (__PLATFORM__ === 'local') globalThis.__game = game;
+    return game;
+  },
   onSave: (raw) => {
     // TODO(Phase 2): hand off to core/save.ts applySave().
     if (raw) console.debug(`save loaded (${raw.length} B)`);

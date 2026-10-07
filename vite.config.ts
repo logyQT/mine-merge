@@ -5,7 +5,8 @@
 //  3. define __PLATFORM__ / import.meta.env.PLATFORM so `if (__PLATFORM__ !== 'yt')`
 //     tree-shakes platform-specific code (e.g. MQTT multiplayer) out of YT builds.
 
-import { defineConfig, type Plugin } from 'vite';
+import type { Plugin } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 export type BuildPlatform = 'yt' | 'portal' | 'local';
 
@@ -59,4 +60,9 @@ export default defineConfig({
   plugins: PLATFORM === 'yt' ? [injectYtSdk()] : [],
   server: { headers },
   preview: { headers },
+  test: {
+    // Unit tests live in tests/unit; tests/e2e is driven by Playwright
+    // (npm run test:e2e), so vitest must not pick those specs up.
+    include: ['tests/unit/**/*.test.*'],
+  },
 });

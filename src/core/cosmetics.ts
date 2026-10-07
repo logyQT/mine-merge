@@ -4,6 +4,7 @@
 // are English. Every roll takes an injected RNG (core/rng.ts).
 //
 // Display-only helpers (CSS strings, HTML markup) stay in the view layer.
+// Convention (whole of core): the injected RNG is always the LAST parameter.
 
 import type { Rng } from './rng';
 import type { GameState, Perk, PerkType, SkinItem } from './state';
@@ -89,7 +90,7 @@ export function curRar(s: GameState): number {
 }
 
 /** Rolls rarities against odds (legacy rollRar, RNG injected). */
-export function rollRar(rng: Rng, odds: number[]): number {
+export function rollRar(odds: number[], rng: Rng): number {
   let x = rng() * odds.reduce((a, b) => a + b, 0);
   for (let i = 0; i < odds.length; i++) {
     x -= odds[i];
@@ -98,15 +99,15 @@ export function rollRar(rng: Rng, odds: number[]): number {
   return 0;
 }
 
-export function rollPerks(rng: Rng, rar: number): Perk[] {
+export function rollPerks(rar: number, rng: Rng): Perk[] {
   // Verbatim legacy shuffle (biased random comparator and all) — parity over purity.
   const keys = Object.keys(PERK).sort(() => rng() - 0.5).slice(0, PCOUNT[rar]);
-  return keys.map((t) => ({ t: t as PerkType, q: rollRar(rng, QW[rar]) }));
+  return keys.map((t) => ({ t: t as PerkType, q: rollRar(QW[rar], rng) }));
 }
 
 /** Lazy-rolls and caches perks on the item, like legacy perksOf(). */
 export function perksOf(it: SkinItem, rng: Rng): Perk[] {
-  return it.perks ?? (it.perks = rollPerks(rng, it.rar));
+  return it.perks ?? (it.perks = rollPerks(it.rar, rng));
 }
 
 /** Total bonus of perk type t from the currently equipped skin (0 if none). */
@@ -134,4 +135,4 @@ export const rollTheme = (rng: Rng): SkinDef => SKINS[1 + Math.floor(rng() * (SK
 export const rnd5 = (rng: Rng): number => 1 + Math.floor(rng() * 5);
 
 /** Random ball level 1..m (level-up crate strip cells). */
-export const crateRoll = (rng: Rng, m: number): number => 1 + Math.floor(rng() * m);
+export const crateRoll = (m: number, rng: Rng): number => 1 + Math.floor(rng() * m);

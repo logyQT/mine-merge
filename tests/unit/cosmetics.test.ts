@@ -45,7 +45,7 @@ describe('rolls', () => {
     const r = rng(1);
     const odds = [60, 25, 11, 4];
     const counts = [0, 0, 0, 0];
-    for (let i = 0; i < 10000; i++) counts[rollRar(r, odds)]++;
+    for (let i = 0; i < 10000; i++) counts[rollRar(odds, r)]++;
     expect(counts[0]).toBeGreaterThan(5600); // ~6000 ± comfortable band
     expect(counts[0]).toBeLessThan(6400);
     expect(counts[1]).toBeGreaterThan(2200);
@@ -55,14 +55,14 @@ describe('rolls', () => {
   });
 
   it('rollRar edge: zero roll lands on the first bucket', () => {
-    expect(rollRar(() => 0, [60, 25, 11, 4])).toBe(0);
+    expect(rollRar([60, 25, 11, 4], () => 0)).toBe(0);
   });
 
   it('rollPerks grants PCOUNT[rar] perks of valid types and qualities', () => {
     const r = rng(3);
     for (let rar = 0; rar < 4; rar++) {
       for (let i = 0; i < 200; i++) {
-        const perks = rollPerks(r, rar);
+        const perks = rollPerks(rar, r);
         expect(perks).toHaveLength(PCOUNT[rar]);
         for (const p of perks) {
           expect(Object.keys(PERK)).toContain(p.t);
@@ -89,11 +89,11 @@ describe('rolls', () => {
       const l5 = rnd5(r);
       expect(l5).toBeGreaterThanOrEqual(1);
       expect(l5).toBeLessThanOrEqual(5);
-      const cr = crateRoll(r, 4);
+      const cr = crateRoll(4, r);
       expect(cr).toBeGreaterThanOrEqual(1);
       expect(cr).toBeLessThanOrEqual(4);
     }
-    expect(crateRoll(rng(1), 1)).toBe(1); // m=1 → always 1
+    expect(crateRoll(1, rng(1))).toBe(1); // m=1 → always 1
   });
 });
 

@@ -3,8 +3,10 @@
 // local builds only, which is how these tests drive the mock's simulation
 // hooks (setAudioEnabled / emitPause) and observe the game loop.
 //
-// Phase 2 note: the DOM game view (legacy layout) is now the visible game;
-// assertions target it, while the Phaser canvas stays as the Phase 3 host.
+// Phase 3 note: the board (#grid/#mine) is canvas-drawn by MineScene; the
+// spacers stay in the DOM as layout boxes, so geometry assertions still read
+// them, and cell taps use mouse clicks at legacy cell coordinates (pad 3,
+// gap 3, square cells — see src/scenes/MineScene.ts).
 
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -46,6 +48,15 @@ async function settleSaves(page: Page): Promise<void> {
   await page.waitForTimeout(900);
 }
 
+/** Taps a merge-grid cell on the canvas (#grid is a transparent spacer). */
+async function clickCell(page: Page, i: number): Promise<void> {
+  const box = (await page.locator('#grid').boundingBox())!;
+  const cw = (box.width - 18) / 5; // 2*pad(3) + 4*gap(3)
+  const c = i % 5;
+  const r = Math.floor(i / 5);
+  await page.mouse.click(box.x + 3 + c * (cw + 3) + cw / 2, box.y + 3 + r * (cw + 3) + cw / 2);
+}
+
 test('boots on PLATFORM=local without console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await gotoKit(page);
@@ -57,6 +68,20 @@ test('boots on PLATFORM=local without console errors', async ({ page }) => {
   await expect(page.locator('#boot-progress')).toHaveCount(0); // boot finished
   // …and the kit's Phaser canvas exists behind it.
   await expect(page.locator('canvas')).toBeVisible();
+  // Phase 3.1: every board texture is generated at boot from the palettes —
+  // 0 asset files, so the keys are drawn in code, never fetched (CSP-clean).
+  const missing = await page.evaluate(() => {
+    const keys = Array.from({ length: 10 }, (_, i) => `mine-${i}`).concat([
+      'mine-empty',
+      'ball-def-1-0',
+      'ball-def-12-0', // prewarmed through the classic color(L) ramp
+      'ball-crypto-1-0', // skin pal + sym
+      'ball-sq-1-0', // skin rad 18% (rounded square)
+      globalThis.__ensureBall!('fruit', 7, 2), // lazy path + rarity ring
+    ]);
+    return keys.filter((k) => !globalThis.__game!.textures.exists(k));
+  });
+  expect(missing).toEqual([]);
   expect(await page.evaluate(() => globalThis.__platform!.firstFrame)).toBe(true);
   expect(errors).toEqual([]);
 });
@@ -69,11 +94,12 @@ test('mine loop: spawn → merge → drop settles with a result', async ({ page 
 
   await page.getByRole('button', { name: 'Nowy' }).click();
   await page.getByRole('button', { name: 'Nowy' }).click();
-  await expect(page.locator('#grid .it')).toHaveCount(2);
 
-  // tap the first ball, then its match → merge rules from legacy tap()
-  await page.locator('#grid .c').nth(0).click();
-  await page.locator('#grid .c').nth(1).click();
+  // Tap the first ball, then its match → merge rules from legacy tap().
+  // (The board is canvas-drawn, so there are no DOM cells to count — the
+  // merge message below proves both balls rendered and combined.)
+  await clickCell(page, 0);
+  await clickCell(page, 1);
   await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 2');
 
   await page.getByRole('button', { name: 'RZUĆ!' }).click();
@@ -191,14 +217,19 @@ test('audio: menu clicks and block breaks produce sound', async ({ page }) => {
   // block broken plays brk (legacy land() behavior).
   await page.getByRole('button', { name: 'Nowy' }).click();
   await page.getByRole('button', { name: 'Nowy' }).click();
-  await page.locator('#grid .c').nth(1).click();
-  await page.locator('#grid .c').nth(2).click();
+  await clickCell(page, 1);
+  await clickCell(page, 2);
   await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 5');
 
   const d0 = await osc();
   await page.getByRole('button', { name: 'RZUĆ!' }).click();
-  await expect(page.locator('#msg')).toContainText('Zdobyto', { timeout: 10000 });
-  expect((await osc()) - d0).toBeGreaterThanOrEqual(2); // hit + brk (coin adds more)
+  // Block-break sounds first (lands prove the drop is under way — hit + brk;
+  // a coin sound may add more), then the controls returning = drop settled.
+  // Assert neither on #msg: legacy's level-up toast (msg after 60 ms)
+  // legitimately overwrites "Zdobyto..." when the drop crosses a level, which
+  // happens whenever the re-rolled frontier rows push the XP over.
+  await expect.poll(async () => (await osc()) - d0, { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole('button', { name: 'RZUĆ!' })).toBeEnabled({ timeout: 10000 });
   expect(errors).toEqual([]);
 });
 
@@ -251,6 +282,27 @@ test('state survives a mid-game window resize', async ({ page }) => {
   expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(await page.evaluate(() => globalThis.__platform!.progress.length)).toBe(initRuns);
   expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(before);
+  expect(errors).toEqual([]);
+});
+
+test('board input follows the canvas across a resize', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 800, height: 600 });
+  await gotoKit(page);
+  await page.getByRole('button', { name: 'Graj' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.waitForTimeout(200); // Scale.RESIZE + one MineScene layout pass
+
+  // The board re-laid-out on the canvas (spacers moved, scene re-measured):
+  // the same two cells still merge at the new size — state survives by
+  // construction (nothing but geometry was touched).
+  await clickCell(page, 0);
+  await clickCell(page, 1);
+  await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 2');
+  expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(errors).toEqual([]);
 });
 

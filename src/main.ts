@@ -9,6 +9,7 @@ import { startApp, state } from './app';
 import { restore } from './core/save';
 import { createPlatform } from './platform/detect';
 import { isDebugPlatform, mountDebugHud } from './platform/debug-hud';
+import { ensureBallTexture } from './scenes/textures';
 
 function showProgress(pct: number): void {
   let el = document.getElementById('boot-progress') as HTMLProgressElement | null;
@@ -42,7 +43,12 @@ boot(platform, {
       game.sound.mute = !on;
     });
     // Tree-shaken out of non-local builds, like the __platform handle above.
-    if (__PLATFORM__ === 'local') globalThis.__game = game;
+    if (__PLATFORM__ === 'local') {
+      globalThis.__game = game;
+      // Lets the e2e suite force-generate any (skin × level × rarity) ball
+      // texture and pin the Phase 3.1 palette → texture path.
+      globalThis.__ensureBall = (skinId, L, rar) => ensureBallTexture(game.textures, skinId, L, rar);
+    }
     startApp(platform); // mount the DOM view + wire controls before markReady()
     return game;
   },

@@ -8,7 +8,9 @@
 <body>
   <div id="app">
     <div class="top"><span>🪙 <span id="coins">0</span></span><span>Głęb.: <span id="depth">0</span> m</span><span>⭐<span id="acc">1</span></span><button id="menuBtn" aria-label="Menu" style="padding:2px 12px;background:#7a5a9e;border-radius:14px">☰</button></div>
-    <div id="grid" role="grid" aria-label="Plansza łączenia"></div>
+    <!-- Board spacers (Phase 3): canvas-drawn by MineScene — transparent,
+         click-through; height/geometry maintained by src/style.css + the scene. -->
+    <div id="grid"></div>
     <div id="inv" aria-label="Ekwipunek"></div>
     <div class="row">
       <button id="spawn"></button>

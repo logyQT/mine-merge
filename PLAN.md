@@ -202,6 +202,22 @@ save migration + war balance, **zero gameplay logic left in the view layer.**
 
 ### Phase 3 — Canvas board in Phaser (3–5 days)
 
+**Decisions (recorded before starting):**
+
+- **The 5×5 merge grid `#grid` goes to canvas — YES.** It is a *board* (interactive game
+  view), not a form: rendering it in MineScene keeps the whole mine loop
+  (select → merge → fly → land) in one coordinate space, so `flyBall` never spans DOM and
+  canvas. This extends the Phase 2 rule into the kit guideline: **board → canvas;
+  forms/lists/text → DOM** (`#inv` chips, all buttons, the top bar, menus and modals stay
+  DOM in every phase).
+- **Board host:** the single Phaser canvas stays inside `#app` (Scale.RESIZE) *behind* the
+  DOM; `#grid`/`#mine` remain in the markup only as transparent, `pointer-events:none`
+  layout spacers whose rects the scene measures each frame — legacy layout/parity is
+  preserved by construction, and one canvas covers both non-contiguous board regions.
+- **Drop flight:** while a drop is in flight (`ui.busy`) the canvas is raised above the DOM
+  (`#app.board-top`) so `flyBall` passes over `#inv` like the legacy `z-index:20`
+  animation; controls are hidden or busy-guarded at that moment, so no clicks are lost.
+
 1. `BootScene`: **generate textures at runtime** from the existing palettes
    (`color(L)` hsl ramp, `TC`, skin `pal`/`sym`/`rad`) via `Phaser.GameObjects.Graphics`
    → keeps bundle at ~0 asset files (CSP-clean, budget-clean). No PNGs for gradients.

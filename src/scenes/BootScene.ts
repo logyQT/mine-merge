@@ -1,9 +1,14 @@
-// Boot scene: currently an empty placeholder whose only job is to prove the
-// full chain main.ts → Phaser → first painted frame → platform.markReady()
-// (PLAN.md Part 2, Phase 1.4). Texture generation and the loading bar move
-// here in Phase 3 — see PLAN.md §Phase 3.1.
+// Boot scene (PLAN.md Phase 3.1): generates every board texture at runtime
+// from the existing palettes — 0 asset files (CSP-clean, budget-clean), no
+// PNGs for gradients. Mine cells are fixed per-HP-tier; balls are prewarmed
+// for the common (skin × level × rarity) combos and created lazily on demand
+// by ensureBallTexture() when MineScene renders anything new.
+//
+// The first painted frame is what startGame() resolves on (POST_RENDER) —
+// texture generation is synchronous, so it completes before that frame.
 
 import * as Phaser from 'phaser';
+import { generateMineTextures, prewarmBallTextures } from './textures';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -11,7 +16,8 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Intentionally empty: the game's backgroundColor covers the first frame.
-    // TODO(Phase 3): generate textures from the legacy palettes + loading bar.
+    generateMineTextures(this.textures);
+    prewarmBallTextures(this.textures);
+    // TODO(Phase 3.2): start MineScene once the canvas board lands.
   }
 }

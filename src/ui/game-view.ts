@@ -15,6 +15,7 @@ import { depth, rowAt, viewRows } from '../core/mine';
 import type { Rng } from '../core/rng';
 import type { AccStats, GameState, Perk, SkinItem, WarPowerKey } from '../core/state';
 import { type Combatant, type Fight, wcost } from '../core/war';
+import { blockColor, color, PAT, tier } from './palette';
 
 export interface Ui {
   sel: number | null;
@@ -37,25 +38,7 @@ export function $<T extends HTMLElement = HTMLElement>(id: string): T {
 
 export const btn = (id: string): HTMLButtonElement => $<HTMLButtonElement>(id);
 
-// ---- block palette (legacy color/TC/PAT/tier/blockColor) ----
-
-function color(l: number): string {
-  return `hsl(${(l * 47 + 200) % 360} 65% 52%)`;
-}
-
-const TC = ['#d64545', '#3f7fd9', '#3fae5a', '#d9b83f', '#8d5cc9', '#e0802f', '#2fb3a8', '#d95fa0', '#7d8aa0', '#3b3b4a'];
-
-const PAT = [
-  'radial-gradient(rgba(255,255,255,.35) 1.5px,transparent 2px) 0 0/8px 8px',
-  'repeating-linear-gradient(45deg,rgba(0,0,0,.18) 0 4px,transparent 4px 8px)',
-  'linear-gradient(rgba(0,0,0,.25) 2px,transparent 2px) 0 0/100% 50%,linear-gradient(90deg,rgba(0,0,0,.25) 2px,transparent 2px) 0 0/50% 100%',
-  'repeating-linear-gradient(45deg,rgba(0,0,0,.2) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(0,0,0,.2) 0 2px,transparent 2px 7px)',
-  'conic-gradient(rgba(0,0,0,.2) 25%,transparent 0 50%,rgba(0,0,0,.2) 0 75%,transparent 0) 0 0/10px 10px',
-];
-
-const tier = (hp: number): number => Math.min(9, hp <= 1 ? 0 : Math.floor(Math.log2(hp)) + 1);
-
-const blockColor = (b: { hp: number }): string | null => (b.hp <= 0 ? null : TC[tier(b.hp)]);
+// ---- block palette: shared with the Phaser texture generator (./palette.ts) ----
 
 // ---- skin styling (legacy stFor/bSt/skBg/skSym/bIn) ----
 

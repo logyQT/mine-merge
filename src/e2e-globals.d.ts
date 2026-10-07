@@ -8,5 +8,9 @@ import type { MockPlatform } from './platform/mock';
 
 declare global {
   var __platform: MockPlatform | undefined;
-  var __game: { loop: { time: number }; sound: { mute: boolean } } | undefined;
+  var __game:
+    | { loop: { time: number }; sound: { mute: boolean }; textures: { exists(key: string): boolean } }
+    | undefined;
+  /** Local-only (see src/main.ts): generates a ball texture, returns its key. */
+  var __ensureBall: ((skinId: string, L: number, rar: number) => string) | undefined;
 }

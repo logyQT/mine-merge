@@ -57,6 +57,20 @@ test('boots on PLATFORM=local without console errors', async ({ page }) => {
   await expect(page.locator('#boot-progress')).toHaveCount(0); // boot finished
   // …and the kit's Phaser canvas exists behind it.
   await expect(page.locator('canvas')).toBeVisible();
+  // Phase 3.1: every board texture is generated at boot from the palettes —
+  // 0 asset files, so the keys are drawn in code, never fetched (CSP-clean).
+  const missing = await page.evaluate(() => {
+    const keys = Array.from({ length: 10 }, (_, i) => `mine-${i}`).concat([
+      'mine-empty',
+      'ball-def-1-0',
+      'ball-def-12-0', // prewarmed through the classic color(L) ramp
+      'ball-crypto-1-0', // skin pal + sym
+      'ball-sq-1-0', // skin rad 18% (rounded square)
+      globalThis.__ensureBall!('fruit', 7, 2), // lazy path + rarity ring
+    ]);
+    return keys.filter((k) => !globalThis.__game!.textures.exists(k));
+  });
+  expect(missing).toEqual([]);
   expect(await page.evaluate(() => globalThis.__platform!.firstFrame)).toBe(true);
   expect(errors).toEqual([]);
 });

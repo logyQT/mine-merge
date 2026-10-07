@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockPlatform } from '../../src/platform/mock.ts';
 import type { Platform } from '../../src/platform/types.ts';
 
@@ -82,13 +82,19 @@ describe('mock platform', () => {
     expect([pauses, resumes]).toEqual([1, 1]);
   });
 
-  it('records scores and warnings', () => {
-    const p = createMockPlatform();
-    p.sendScore(12);
-    p.sendScore(30);
-    p.logWarning('test');
-    expect(p.scores).toEqual([12, 30]);
-    expect(p.warnings).toEqual(['test']);
+  it('records scores and warnings and echoes warnings to the console', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const p = createMockPlatform();
+      p.sendScore(12);
+      p.sendScore(30);
+      p.logWarning('test');
+      expect(p.scores).toEqual([12, 30]);
+      expect(p.warnings).toEqual(['test']);
+      expect(warn).toHaveBeenCalledWith('test');
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('resolves ads: interstitial counts, rewarded records the reward id', async () => {

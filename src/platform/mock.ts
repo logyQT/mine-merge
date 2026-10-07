@@ -123,6 +123,10 @@ export function createMockPlatform(opts: MockPlatformOptions = {}): MockPlatform
     },
     logWarning(msg = '') {
       warnings.push(msg);
+      // The array is only read by tests — also reach the console, because
+      // portal/local builds may run uploaded with no debugger attached
+      // (YT goes through ytgame.health instead).
+      console.warn(msg);
     },
 
     async requestInterstitial() {

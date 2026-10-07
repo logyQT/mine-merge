@@ -13,9 +13,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "fixture:gen": "node scripts/gen-save-fixture.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "cross-env": "^10.1.0",
     "jsdom": "^30.1.2",

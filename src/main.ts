@@ -1,10 +1,12 @@
 // Bootstrap entry point: pick the platform for this build, run the boot
-// sequence (init → first frame → load save → start Phaser → ready), show
-// progress, and (locally only) mount the debug HUD.
+// sequence (init → first frame → load save → start Phaser + DOM view → ready),
+// show progress, and (locally only) mount the debug HUD.
 
 import './style.css';
 import { boot } from './boot';
 import { startGame } from './game';
+import { startApp, state } from './app';
+import { restore } from './core/save';
 import { createPlatform } from './platform/detect';
 import { isDebugPlatform, mountDebugHud } from './platform/debug-hud';
 
@@ -41,11 +43,12 @@ boot(platform, {
     });
     // Tree-shaken out of non-local builds, like the __platform handle above.
     if (__PLATFORM__ === 'local') globalThis.__game = game;
+    startApp(platform); // mount the DOM view + wire controls before markReady()
     return game;
   },
   onSave: (raw) => {
-    // TODO(Phase 2): hand off to core/save.ts applySave().
-    if (raw) console.debug(`save loaded (${raw.length} B)`);
+    restore(state, raw); // schema-v1 accepted forever (core/save.ts)
+    if (raw) console.debug(`save loaded (${raw.length} B)`); // pinned by e2e
   },
 })
   .catch((err) => platform.logWarning(String(err)))

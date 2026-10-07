@@ -8,6 +8,8 @@
     "dev:yt": "cross-env PLATFORM=yt vite --port 8080",
     "build:yt": "cross-env PLATFORM=yt vite build --outDir dist/yt && node scripts/check-budget.mjs dist/yt",
     "build:web": "cross-env PLATFORM=portal vite build --outDir dist/web && node scripts/check-budget.mjs dist/web",
+    "preview": "vite preview --outDir dist/web --port 8080 --strictPort",
+    "preview:yt": "cross-env PLATFORM=yt vite preview --outDir dist/yt --port 8080 --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -128,3 +128,27 @@ export function planDrop(
   }
   return r;
 }
+
+/**
+ * Mega-bomb upgrade: damages the top 3 rows by half their max HP and
+ * returns the raw coins earned (legacy #bomb handler, lines 132–134 —
+ * the caller applies incMul/addXp/advanceTopRow).
+ */
+export function applyBomb(s: GameState, rng: Rng): number {
+  let e = 0;
+  for (let k = 0; k < 3; k++) {
+    const r = s.topRow + k;
+    rowAt(s, r, rng).forEach((b) => {
+      if (b.hp > 0) {
+        b.hp = Math.max(0, b.hp - Math.max(1, Math.ceil(b.max * 0.5)));
+        if (b.hp <= 0) e += (1 + Math.floor(r / 3)) * (b.gem ? 6 : 1);
+      }
+    });
+  }
+  return e;
+}
+
+/** Advances topRow past fully destroyed rows (legacy: two inline loops). */
+export function advanceTopRow(s: GameState, rng: Rng): void {
+  while (rowAt(s, s.topRow, rng).every((b) => b.hp <= 0)) s.topRow += 1;
+}

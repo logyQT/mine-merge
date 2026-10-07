@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { COLS } from '../../src/config';
 import { accLvl } from '../../src/core/economy';
-import { depth, land, makeRow, planDrop, rowAt, splash, viewRows } from '../../src/core/mine';
+import { advanceTopRow, applyBomb, depth, land, makeRow, planDrop, rowAt, splash, viewRows } from '../../src/core/mine';
 import { createSeededRng } from '../../src/core/rng';
 import { restore } from '../../src/core/save';
 import { createInitialState, type GameState, type MineCell } from '../../src/core/state';
@@ -231,6 +231,43 @@ describe('planDrop', () => {
     s.rows[0][1].hp = 0;
     s.rows[1][1].hp = 0;
     expect(planDrop(s, 1, 5, {}, rng())).toBe(2);
+  });
+});
+
+describe('applyBomb / advanceTopRow', () => {
+  it('bomb damages the top 3 rows by half their max (min 1)', () => {
+    const s = fresh();
+    s.rows = board(10, 6);
+    expect(applyBomb(s, rng())).toBe(0); // nothing dies: 10 − ceil(5) = 5
+    expect(s.rows[0][0].hp).toBe(5);
+    expect(s.rows[2][4].hp).toBe(5);
+    expect(s.rows[3][0].hp).toBe(10); // rows beyond the blast untouched
+  });
+
+  it('bomb earns per destroyed block with depth scaling', () => {
+    const s = fresh();
+    s.rows = board(10, 6);
+    s.rows[0][2].hp = 1; // dies → 1 + floor(0/3) = 1
+    s.rows[1][2].hp = 1; // dies → 1
+    s.rows[2][2].hp = 1; // dies → 1
+    expect(applyBomb(s, rng())).toBe(3);
+    expect(s.rows[0][2].hp).toBe(0);
+  });
+
+  it('advanceTopRow skips fully destroyed rows and stops at a live one', () => {
+    const s = fresh();
+    s.rows = board(10, 8);
+    s.rows[0].forEach((b) => (b.hp = 0));
+    s.rows[1].forEach((b) => (b.hp = 0));
+    expect(s.topRow).toBe(0);
+    advanceTopRow(s, rng());
+    expect(s.topRow).toBe(2);
+
+    // Rows that never existed generate live — the walk always terminates.
+    s.rows = board(10, 0);
+    s.topRow = 0;
+    expect(() => advanceTopRow(s, rng())).not.toThrow();
+    expect(s.topRow).toBe(0);
   });
 });
 

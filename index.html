@@ -6,7 +6,51 @@
   <title>Kopalnia</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div class="top"><span>🪙 <span id="coins">0</span></span><span>Głęb.: <span id="depth">0</span> m</span><span>⭐<span id="acc">1</span></span><button id="menuBtn" aria-label="Menu" style="padding:2px 12px;background:#7a5a9e;border-radius:14px">☰</button></div>
+    <div id="grid" role="grid" aria-label="Plansza łączenia"></div>
+    <div id="inv" aria-label="Ekwipunek"></div>
+    <div class="row">
+      <button id="spawn"></button>
+      <button id="up"></button>
+    </div>
+    <div class="row">
+      <button id="inc" style="flex:1;background:#c24a8a"></button>
+      <button id="ren" style="flex:1;background:#2a9bb5"></button>
+    </div>
+    <div class="row">
+      <button id="pas" style="flex:1;background:#2f8f5a;font-size:13px"></button>
+      <button id="dis" style="flex:1;background:#8a5a2f;font-size:13px"></button>
+    </div>
+    <div class="row">
+      <button id="blast" style="flex:1;background:#e0572f;font-size:13px"></button>
+      <button id="buyb" style="flex:1;background:#6a4bd0;font-size:13px"></button>
+      <button id="bomb" style="flex:1;background:#b8202f;font-size:13px"></button>
+    </div>
+    <button id="sell" style="background:#8a6d1c"></button>
+    <button id="crate" style="background:#d9a21f;display:none"></button>
+    <button id="drop">RZUĆ!</button>
+    <div id="msg">Dotknij przedmiot, potem taki sam, by je połączyć.</div>
+    <div id="mine"></div>
+  </div>
+  <div id="menu"><div class="mbox">
+   <h1>Łącz i kop</h1>
+   <p style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
+   <button id="play" style="background:#27b36a;font-size:22px;padding:16px"></button>
+   <!-- Hidden until their screens are ported (Phase 2 slices): war, stats, shop, multiplayer. -->
+   <button id="warBtn" style="background:#d98a1f;font-size:20px;display:none">⚔ Wojna kulek</button>
+   <button id="statsBtn" style="background:#c24a8a;display:none">⭐ Statystyki</button>
+   <button id="shopBtn" style="background:#2a9bb5;display:none">🛍 Sklep ze skinami</button>
+   <button id="mpBtn" style="background:#2f8f5a;display:none">🌐 Multiplayer</button>
+   <button id="how" style="background:var(--btn)">Jak grać</button>
+   <div id="rules">
+    <p>Dotknij kulkę, potem drugą o tym samym poziomie, by je połączyć. Wyższy poziom to większa siła.</p>
+    <p>RZUĆ! zrzuca kulki na bloki. Zniszczone bloki dają monety. Kolor bloku zależy od jego życia.</p>
+    <p>Za monety kupisz nowe kulki, ulepszenia, wybuchy i bomby. Kulki możesz też sprzedać. Postęp zapisuje się sam.</p>
+   </div>
+   <button id="snd" style="background:#7a5a9e"></button>
+   <button id="wipe" style="background:#b8202f">Resetuj postęp</button>
+  </div></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

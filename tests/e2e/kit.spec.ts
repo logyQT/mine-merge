@@ -1,15 +1,18 @@
 // E2E suite for the kit against PLATFORM=local + the mock platform
 // (PLAN.md §1.5). src/main.ts exposes __platform/__game on globalThis in
 // local builds only, which is how these tests drive the mock's simulation
-// hooks (setAudioEnabled / emitPause) and observe the Phaser game loop.
+// hooks (setAudioEnabled / emitPause) and observe the game loop.
+//
+// Phase 2 note: the DOM game view (legacy layout) is now the visible game;
+// assertions target it, while the Phaser canvas stays as the Phase 3 host.
 
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const SAVE_KEY = 'mine-merge-save-v1';
-// The frozen schema-v1 save fixture — the same file the unit migration tests
-// pin, injected here as an opaque save string for the roundtrip test.
+// The frozen schema-v1 save fixture — the same file the unit migration tests pin.
 const saveV1 = readFileSync(new URL('../unit/fixtures/save-v1.json', import.meta.url), 'utf8');
+const fixture: Record<string, unknown> = JSON.parse(saveV1);
 
 /** Collects uncaught page errors and console errors (favicon 404s are
  *  dev-server noise, not game failures). */
@@ -30,14 +33,52 @@ async function gotoKit(page: Page): Promise<void> {
   await page.waitForFunction(() => globalThis.__platform?.ready === true);
 }
 
+/** Pre-seeds localStorage so the FIRST boot loads the save, like a return visit. */
+async function seedSave(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ key, save }) => localStorage.setItem(key, save),
+    { key: SAVE_KEY, save: saveV1 },
+  );
+}
+
+/** Waits out the 500 ms boot-save debounce so storage reads are stable. */
+async function settleSaves(page: Page): Promise<void> {
+  await page.waitForTimeout(900);
+}
+
 test('boots on PLATFORM=local without console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await gotoKit(page);
 
-  await expect(page.locator('canvas')).toBeVisible();
+  // The DOM game view is up (legacy menu at boot)…
+  await expect(page.locator('#grid')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Graj' })).toBeVisible();
   await expect(page.locator('.debug-hud')).toBeVisible();
   await expect(page.locator('#boot-progress')).toHaveCount(0); // boot finished
+  // …and the kit's Phaser canvas exists behind it.
+  await expect(page.locator('canvas')).toBeVisible();
   expect(await page.evaluate(() => globalThis.__platform!.firstFrame)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('mine loop: spawn → merge → drop settles with a result', async ({ page }) => {
+  const errors = collectErrors(page);
+  await gotoKit(page);
+  await page.getByRole('button', { name: 'Graj' }).click(); // dismiss the boot menu
+  await expect(page.locator('#menu')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await expect(page.locator('#grid .it')).toHaveCount(2);
+
+  // tap the first ball, then its match → merge rules from legacy tap()
+  await page.locator('#grid .c').nth(0).click();
+  await page.locator('#grid .c').nth(1).click();
+  await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 2');
+
+  await page.getByRole('button', { name: 'RZUĆ!' }).click();
+  await expect(page.locator('#msg')).toContainText('Zdobyto', { timeout: 10000 });
+  expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(errors).toEqual([]);
 });
 
@@ -53,35 +94,43 @@ for (const viewport of VIEWPORTS) {
     await page.setViewportSize(viewport);
     await gotoKit(page);
 
-    const box = await page.locator('canvas').boundingBox();
-    expect(box, 'canvas present').not.toBeNull();
-    expect(box!.width).toBeGreaterThanOrEqual(viewport.width - 40);
-    expect(box!.width).toBeLessThanOrEqual(viewport.width + 40);
-    expect(box!.height).toBeGreaterThanOrEqual(viewport.height - 40);
-    expect(box!.height).toBeLessThanOrEqual(viewport.height + 40);
+    // The legacy game column fits the viewport at every aspect ratio…
+    await expect(page.locator('#grid')).toBeVisible();
+    const app = await page.locator('#app').boundingBox();
+    expect(app).not.toBeNull();
+    expect(app!.width).toBeGreaterThan(0);
+    expect(app!.width).toBeLessThanOrEqual(viewport.width);
+    // …and the canvas (Phase 3 host) exists without overflowing.
+    const canvas = await page.locator('canvas').boundingBox();
+    expect(canvas).not.toBeNull();
+    expect(canvas!.width).toBeGreaterThan(0);
+    expect(canvas!.width).toBeLessThanOrEqual(viewport.width + 40);
     expect(errors).toEqual([]);
   });
 }
 
 test('state survives a mid-game window resize', async ({ page }) => {
   const errors = collectErrors(page);
+  await seedSave(page); // load the fixture on the FIRST boot, like a return visit
   await page.setViewportSize({ width: 800, height: 600 });
   await gotoKit(page);
+  await settleSaves(page);
 
-  // Seed a save so we can prove nothing re-boots or wipes storage.
-  await page.evaluate((save) => globalThis.__platform!.saveSave(save), saveV1);
+  const before = await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY);
+  expect(JSON.parse(before!).coins).toBe(fixture.coins); // the fixture actually loaded
   const initRuns = await page.evaluate(() => globalThis.__platform!.progress.length);
+  const gridBefore = (await page.locator('#grid').boundingBox())!.width;
 
   await page.setViewportSize({ width: 360, height: 640 });
-  // The canvas follows the viewport (Scale.RESIZE)…
+  // The view follows the viewport…
   await expect
-    .poll(async () => (await page.locator('canvas').boundingBox())?.width ?? 0)
-    .toBeLessThan(400);
+    .poll(async () => (await page.locator('#grid').boundingBox())?.width ?? Number.MAX_SAFE_INTEGER)
+    .toBeLessThan(gridBefore);
 
-  // …while the booted session and its save stay untouched (no re-init).
+  // …while the booted session and its save stay untouched (no re-init, no wipe).
   expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(await page.evaluate(() => globalThis.__platform!.progress.length)).toBe(initRuns);
-  expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(saveV1);
+  expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(before);
   expect(errors).toEqual([]);
 });
 
@@ -92,17 +141,30 @@ test('save → reload → identical state', async ({ page }) => {
   page.on('console', (msg) => {
     if (msg.text().includes('save loaded')) saveLogs.push(msg.text());
   });
+  await seedSave(page);
   await gotoKit(page);
-
-  await page.evaluate((save) => globalThis.__platform!.saveSave(save), saveV1);
-  expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(saveV1);
+  expect(saveLogs.length).toBeGreaterThan(0); // first boot consumed the save
+  await settleSaves(page);
 
   await page.reload();
   await page.waitForFunction(() => globalThis.__platform?.ready === true);
+  await settleSaves(page);
+  expect(saveLogs.length).toBeGreaterThan(1); // the reload consumed it too
 
-  expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(saveV1);
-  expect(await page.evaluate(() => globalThis.__platform!.loadSave())).toBe(saveV1);
-  expect(saveLogs.some((text) => /save loaded \(\d+ B\)/.test(text))).toBe(true);
+  const raw = await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY);
+  expect(raw).not.toBeNull();
+  const saved = JSON.parse(raw!) as Record<string, unknown>;
+  // Durable core identical to the fixture; frontier rows re-roll by design
+  // (pinned by save-core.test.ts — same behavior as the legacy oracle).
+  for (const key of Object.keys(fixture)) {
+    if (key === 'rows') continue;
+    expect(saved[key], `field ${key}`).toEqual(fixture[key]);
+  }
+  expect((saved.rows as unknown[]).slice(0, fixture.topRow as number)).toEqual(
+    (fixture.rows as unknown[]).slice(0, fixture.topRow as number),
+  );
+  // The mock round-trips whatever is in storage.
+  expect(await page.evaluate(() => globalThis.__platform!.loadSave())).toBe(raw);
   expect(errors).toEqual([]);
 });
 
@@ -110,9 +172,9 @@ test('mock.setAudioEnabled(false) silences the audio path', async ({ page }) => 
   const errors = collectErrors(page);
   await gotoKit(page);
 
-  // A real gesture unlocks the AudioContext (Chromium starts it suspended);
-  // until then, scheduled mute events are not observable via gain.value.
-  await page.locator('canvas').click({ position: { x: 10, y: 10 } });
+  // A real gesture unlocks the AudioContext (Chromium starts it suspended).
+  // The boot menu overlays the canvas, so click the menu's play button.
+  await page.getByRole('button', { name: 'Graj' }).click();
 
   // Audio is on by default → Phaser output unmuted.
   expect(await page.evaluate(() => globalThis.__game!.sound.mute)).toBe(false);

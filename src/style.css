@@ -1,18 +1,29 @@
-/* Kit-wide layout: the Phaser canvas fills the viewport (Scale.RESIZE reads
-   the parent's size), so state survives resize by construction. */
+/* Kit-only styles. The game's look lives in legacy/style.css — imported by
+   the app shell as the temporary Phase 2 view layer (PLAN: keep the DOM
+   rendering while core is extracted). Do not add conflicting body/#app
+   layout rules here; legacy owns them (centered 380px column). */
+
 html,
 body {
   height: 100%;
   margin: 0;
-  background: #101828;
   overscroll-behavior: none;
 }
 
+/* The Phaser canvas (Phase 3 board host) sits behind the DOM view. */
 #app {
-  position: absolute;
-  inset: 0;
+  position: relative;
 }
 
 #app canvas {
   display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+}
+
+#app > *:not(canvas) {
+  position: relative;
+  z-index: 1;
 }

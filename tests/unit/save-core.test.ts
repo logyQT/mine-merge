@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { createInitialState, type GameState } from '../../src/core/state';
+import { createInitialState, resetState, type GameState } from '../../src/core/state';
 import { applySave, restore, serialize, SAVE_KEYS } from '../../src/core/save';
 
 // Phase 2 port of the legacy oracle (tests/unit/save.test.js): same pins,
@@ -176,6 +176,19 @@ describe('robustness', () => {
   it('no save string → normalize only, defaults intact', () => {
     const s = createInitialState();
     expect(() => restore(s, null)).not.toThrow();
+    expect(serialize(s)).toBe(serialize(createInitialState()));
+  });
+
+  it('resetState restores every persisted field (legacy resetGame)', () => {
+    const s = load(fixtureText);
+    s.coins = 999999;
+    s.grid[0] = 7;
+    s.topRow = 40;
+    s.acc.xp = 5000;
+    s.war.wave = 12;
+    s.skins.cur = 1;
+    resetState(s);
+    expect(s).toEqual(createInitialState());
     expect(serialize(s)).toBe(serialize(createInitialState()));
   });
 });

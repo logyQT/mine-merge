@@ -108,3 +108,8 @@ export function createInitialState(): GameState {
     bestDepth: 0,
   };
 }
+
+/** Restores every persisted field to its default (legacy resetGame). */
+export function resetState(s: GameState): void {
+  Object.assign(s, createInitialState());
+}

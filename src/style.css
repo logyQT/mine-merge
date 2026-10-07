@@ -3,14 +3,20 @@
    rendering while core is extracted). Do not add conflicting body/#app
    layout rules here; legacy owns them (centered 380px column). */
 
+/* min-height, not height: legacy/style.css gives body min-height:100vh and
+   lets it GROW with content — a fixed height here would let #app's flex
+   column shrink items (inventory/buttons) below their content whenever the
+   column exceeds the viewport, diverging from the legacy layout. */
 html,
 body {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   overscroll-behavior: none;
 }
 
-/* The Phaser canvas (Phase 3 board host) sits behind the DOM view. */
+/* Phase 3: the canvas hosts the board (MineScene) inside #app. The DOM keeps
+   the HUD/buttons on top (z1); the board spacers below are transparent and
+   click-through so pointer events reach the canvas underneath. */
 #app {
   position: relative;
 }
@@ -21,9 +27,34 @@ body {
   top: 0;
   left: 0;
   z-index: 0;
+  cursor: pointer; /* legacy .c cursor, now owned by the canvas */
 }
 
 #app > *:not(canvas) {
   position: relative;
   z-index: 1;
+}
+
+/* While a drop is in flight, the canvas rises above the DOM so flyBall
+   passes over #inv (legacy .fly z-index:20). Everything still on screen at
+   that moment is either hidden by .gone or busy-guarded, so no clicks are
+   lost — and the canvas stays transparent everywhere but the board. */
+#app.board-top canvas {
+  z-index: 2;
+}
+
+/* Board spacers: #grid keeps legacy geometry (5 square cells + equal gaps ⇒
+   exactly square at any width); #mine's height is written by MineScene from
+   viewRows() so the canvas knows where the board ends. The #app prefix is
+   deliberate: legacy/style.css loads after this file (import order), so the
+   overrides must out-specify its #grid/#mine background rules. */
+#app #grid {
+  aspect-ratio: 1;
+  background: transparent;
+  pointer-events: none;
+}
+
+#app #mine {
+  background: transparent;
+  pointer-events: none;
 }

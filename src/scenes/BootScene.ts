@@ -18,6 +18,7 @@ export class BootScene extends Phaser.Scene {
   create(): void {
     generateMineTextures(this.textures);
     prewarmBallTextures(this.textures);
-    // TODO(Phase 3.2): start MineScene once the canvas board lands.
+    // Textures are synchronous — hand over to the board scene immediately.
+    this.scene.start('Mine');
   }
 }

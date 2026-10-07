@@ -3,8 +3,10 @@
 // local builds only, which is how these tests drive the mock's simulation
 // hooks (setAudioEnabled / emitPause) and observe the game loop.
 //
-// Phase 2 note: the DOM game view (legacy layout) is now the visible game;
-// assertions target it, while the Phaser canvas stays as the Phase 3 host.
+// Phase 3 note: the board (#grid/#mine) is canvas-drawn by MineScene; the
+// spacers stay in the DOM as layout boxes, so geometry assertions still read
+// them, and cell taps use mouse clicks at legacy cell coordinates (pad 3,
+// gap 3, square cells — see src/scenes/MineScene.ts).
 
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -46,6 +48,15 @@ async function settleSaves(page: Page): Promise<void> {
   await page.waitForTimeout(900);
 }
 
+/** Taps a merge-grid cell on the canvas (#grid is a transparent spacer). */
+async function clickCell(page: Page, i: number): Promise<void> {
+  const box = (await page.locator('#grid').boundingBox())!;
+  const cw = (box.width - 18) / 5; // 2*pad(3) + 4*gap(3)
+  const c = i % 5;
+  const r = Math.floor(i / 5);
+  await page.mouse.click(box.x + 3 + c * (cw + 3) + cw / 2, box.y + 3 + r * (cw + 3) + cw / 2);
+}
+
 test('boots on PLATFORM=local without console errors', async ({ page }) => {
   const errors = collectErrors(page);
   await gotoKit(page);
@@ -83,11 +94,12 @@ test('mine loop: spawn → merge → drop settles with a result', async ({ page 
 
   await page.getByRole('button', { name: 'Nowy' }).click();
   await page.getByRole('button', { name: 'Nowy' }).click();
-  await expect(page.locator('#grid .it')).toHaveCount(2);
 
-  // tap the first ball, then its match → merge rules from legacy tap()
-  await page.locator('#grid .c').nth(0).click();
-  await page.locator('#grid .c').nth(1).click();
+  // Tap the first ball, then its match → merge rules from legacy tap().
+  // (The board is canvas-drawn, so there are no DOM cells to count — the
+  // merge message below proves both balls rendered and combined.)
+  await clickCell(page, 0);
+  await clickCell(page, 1);
   await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 2');
 
   await page.getByRole('button', { name: 'RZUĆ!' }).click();
@@ -205,8 +217,8 @@ test('audio: menu clicks and block breaks produce sound', async ({ page }) => {
   // block broken plays brk (legacy land() behavior).
   await page.getByRole('button', { name: 'Nowy' }).click();
   await page.getByRole('button', { name: 'Nowy' }).click();
-  await page.locator('#grid .c').nth(1).click();
-  await page.locator('#grid .c').nth(2).click();
+  await clickCell(page, 1);
+  await clickCell(page, 2);
   await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 5');
 
   const d0 = await osc();
@@ -265,6 +277,27 @@ test('state survives a mid-game window resize', async ({ page }) => {
   expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(await page.evaluate(() => globalThis.__platform!.progress.length)).toBe(initRuns);
   expect(await page.evaluate((key) => localStorage.getItem(key), SAVE_KEY)).toBe(before);
+  expect(errors).toEqual([]);
+});
+
+test('board input follows the canvas across a resize', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 800, height: 600 });
+  await gotoKit(page);
+  await page.getByRole('button', { name: 'Graj' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.waitForTimeout(200); // Scale.RESIZE + one MineScene layout pass
+
+  // The board re-laid-out on the canvas (spacers moved, scene re-measured):
+  // the same two cells still merge at the new size — state survives by
+  // construction (nothing but geometry was touched).
+  await clickCell(page, 0);
+  await clickCell(page, 1);
+  await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 2');
+  expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
   expect(errors).toEqual([]);
 });
 

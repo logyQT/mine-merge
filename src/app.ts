@@ -39,12 +39,12 @@ import {
 import { createNet, type Net } from './mp';
 import { prepareFight, tick, wcost, wEnd, armyList, mk, type Fight, type Power } from './core/war';
 import type { Platform } from './platform/types';
+import { flyBall, renderMine, type Handlers, type Ui } from './ui/board';
 import {
   $,
   btn,
   cellHtml,
   CW,
-  flyBall,
   hide,
   luckMsg,
   msg,
@@ -52,7 +52,6 @@ import {
   render,
   renderContBody,
   renderCrate,
-  renderMine,
   renderShop,
   renderSInv,
   renderSpin,
@@ -68,8 +67,6 @@ import {
   mpMsg,
   updSnd,
   wLog,
-  type Handlers,
-  type Ui,
 } from './ui/game-view';
 
 // ---- module state (legacy globals: transient UI + timers) ----

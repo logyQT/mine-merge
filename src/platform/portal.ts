@@ -13,7 +13,7 @@ export function createPortalPlatform(opts: MockPlatformOptions = {}): Platform {
   return {
     id: 'portal',
     // ads: false until the portal ad API is ported (PLAN Part 2, Phase 5).
-    // multiplayer: portal builds keep the MQTT path (PLAN Part 2, Phase 6).
+    // multiplayer: portal builds keep the MQTT path (PLAN Part 2, Phase 5).
     features: { ads: false, multiplayer: true, cloudSave: false },
 
     init: (onProgress) => mock.init(onProgress),
@@ -32,7 +32,14 @@ export function createPortalPlatform(opts: MockPlatformOptions = {}): Platform {
     sendScore: (value) => mock.sendScore(value),
     logWarning: (msg) => mock.logWarning(msg),
 
-    requestInterstitial: () => mock.requestInterstitial(),
-    requestRewarded: (rewardId) => mock.requestRewarded(rewardId),
+    // ads: false → same convention as yt.ts: no ad can run yet, so the
+    // interstitial is a no-op and rewarded resolves false. A reward must
+    // never be granted without an ad; Phase 5 ports the portal ad API.
+    async requestInterstitial() {
+      /* no-op */
+    },
+    async requestRewarded() {
+      return false;
+    },
   };
 }

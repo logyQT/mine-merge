@@ -52,4 +52,11 @@ describe('portal platform (stub)', () => {
   it('never exposes the local debug-HUD hooks', () => {
     expect(isDebugPlatform(createPortalPlatform())).toBe(false);
   });
+
+  it('keeps ads inert like yt: interstitial no-op, rewarded resolves false', async () => {
+    const p = createPortalPlatform();
+    expect(p.features.ads).toBe(false);
+    await expect(p.requestInterstitial()).resolves.toBeUndefined();
+    await expect(p.requestRewarded('crate-free-1')).resolves.toBe(false);
+  });
 });

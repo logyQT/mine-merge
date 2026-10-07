@@ -165,6 +165,43 @@ test('multiplayer: screen opens with army info and returns to menu', async ({ pa
   expect(errors).toEqual([]);
 });
 
+test('audio: menu clicks and block breaks produce sound', async ({ page }) => {
+  const errors = collectErrors(page);
+  // Count every oscillator the game creates (one per tone() call).
+  await page.addInitScript({
+    content: `window.__osc = 0;
+      const orig = AudioContext.prototype.createOscillator;
+      AudioContext.prototype.createOscillator = function () { window.__osc += 1; return orig.call(this); };`,
+  });
+  await seedSave(page); // spawnLvl 4 → its balls always break row-0 blocks
+  await gotoKit(page);
+  const osc = (): Promise<number> =>
+    page.evaluate(() => (window as unknown as { __osc?: number }).__osc ?? 0);
+
+  // Menu buttons click (this one also opens stats).
+  const m0 = await osc();
+  await page.getByRole('button', { name: 'Statystyki' }).click();
+  await expect(page.locator('#stats')).toBeVisible();
+  expect(await osc()).toBeGreaterThan(m0);
+
+  await page.getByRole('button', { name: 'Wróć do menu' }).click();
+  await page.locator('#play').click();
+
+  // Merge two spawned balls, then drop: every landing plays hit, and any
+  // block broken plays brk (legacy land() behavior).
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await page.getByRole('button', { name: 'Nowy' }).click();
+  await page.locator('#grid .c').nth(1).click();
+  await page.locator('#grid .c').nth(2).click();
+  await expect(page.locator('#msg')).toHaveText('Połączono! Poziom 5');
+
+  const d0 = await osc();
+  await page.getByRole('button', { name: 'RZUĆ!' }).click();
+  await expect(page.locator('#msg')).toContainText('Zdobyto', { timeout: 10000 });
+  expect((await osc()) - d0).toBeGreaterThanOrEqual(2); // hit + brk (coin adds more)
+  expect(errors).toEqual([]);
+});
+
 const VIEWPORTS = [
   { width: 360, height: 640 },
   { width: 800, height: 600 },

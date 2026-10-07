@@ -313,6 +313,8 @@ function bindDrop(): void {
       P.push(
         fl.then(() => {
           const o = land(state, c, L, dmg, rng);
+          sfx.hit(); // legacy land() ended with sfx.hit() + sfx.brk()
+          if (o.e > 0) sfx.brk(); // any earned coins ⇔ a block broke
           earned += o.e;
           refresh();
           renderMine(state, rng, { c, r: o.fr });
@@ -388,12 +390,18 @@ function armWipe(on: boolean): void {
 function bindMenu(): void {
   btn('play').onclick = () => {
     warmAudio();
+    sfx.click();
     $('menu').classList.add('hide');
     armWipe(false);
   };
-  btn('how').onclick = () => $('rules').classList.toggle('show');
+  btn('how').onclick = () => {
+    sfx.click();
+    $('rules').classList.toggle('show');
+  };
   btn('menuBtn').onclick = () => {
-    if (!busy) openMenu();
+    if (busy) return;
+    sfx.click();
+    openMenu();
   };
   btn('snd').onclick = () => {
     setMuted(!isMuted());
@@ -401,6 +409,7 @@ function bindMenu(): void {
     sfx.click();
   };
   btn('wipe').onclick = () => {
+    sfx.click();
     if (!btn('wipe').dataset.armed) {
       armWipe(true);
       return;
@@ -434,6 +443,7 @@ function addStat(k: keyof AccStats): void {
 function bindStats(): void {
   btn('statsBtn').onclick = () => {
     warmAudio();
+    sfx.click();
     hide('menu');
     show('stats');
     renderStatsView();
@@ -572,6 +582,7 @@ function sellSkin(id: number): void {
 function bindShop(): void {
   btn('shopBtn').onclick = () => {
     warmAudio();
+    sfx.click();
     hide('menu');
     show('shop');
     renderShopView();
@@ -694,6 +705,7 @@ function prepareWar(): void {
 function bindWar(): void {
   btn('warBtn').onclick = () => {
     warmAudio();
+    sfx.click();
     hide('menu');
     show('war');
     prepareWar();
@@ -988,6 +1000,7 @@ async function mpFind(): Promise<void> {
 function bindMp(): void {
   btn('mpBtn').onclick = () => {
     warmAudio();
+    sfx.click();
     $('mpLog').textContent = '';
     hide('menu');
     show('mp');

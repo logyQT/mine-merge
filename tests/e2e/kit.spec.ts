@@ -82,6 +82,42 @@ test('mine loop: spawn → merge → drop settles with a result', async ({ page 
   expect(errors).toEqual([]);
 });
 
+test('screens: stats and shop open and return to the menu', async ({ page }) => {
+  const errors = collectErrors(page);
+  await gotoKit(page); // boot menu is open — stats/shop launch from here
+
+  await page.getByRole('button', { name: 'Statystyki' }).click();
+  await expect(page.locator('#stats')).toBeVisible();
+  await expect(page.locator('#stats #sInfo')).toHaveText('Poziom 1 · wolne punkty: 0');
+  await page.getByRole('button', { name: 'Wróć do menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Sklep' }).click();
+  await expect(page.locator('#shop')).toBeVisible();
+  await expect(page.locator('#shInfo')).toContainText('skiny w ekwipunku: 0');
+  await page.getByRole('button', { name: 'Wróć do menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('level-up crate: opens, spins, awards the ball', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedSave(page); // the fixture carries acc.crates = 1
+  await gotoKit(page);
+  await page.locator('#play').click(); // fixture play text is "Kontynuuj"
+
+  await expect(page.locator('#crate')).toBeVisible();
+  await page.locator('#crate').click();
+  await expect(page.locator('#crateov')).toBeVisible();
+  await expect(page.locator('#cInfo')).toContainText('Skrzynki: 1');
+
+  await page.locator('#cOpen').click();
+  await expect(page.locator('#cRes')).toContainText('Wylosowano', { timeout: 8000 });
+  await expect(page.locator('#cInfo')).toContainText('Skrzynki: 0'); // consumed
+  expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 const VIEWPORTS = [
   { width: 360, height: 640 },
   { width: 800, height: 600 },

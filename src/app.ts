@@ -9,7 +9,7 @@
 
 import { N } from './config';
 import { isMuted, setAudioGate, setMuted, sfx, warmAudio } from './audio/sfx';
-import { perk } from './core/cosmetics';
+import { crateRoll, CRATES, itName, itVal, ownedMax, perk, RAR, rollPerks, rollRar, rollTheme, rnd5, type CrateDef } from './core/cosmetics';
 import {
   accLvl,
   addXp,
@@ -21,22 +21,38 @@ import {
   pw,
   renChance,
   sellPrice,
+  spent,
   spawnPrice,
 } from './core/economy';
 import { advanceTopRow, applyBomb, depth, land, planDrop } from './core/mine';
 import type { Rng } from './core/rng';
 import { serialize } from './core/save';
-import { createInitialState, resetState, type GameState } from './core/state';
+import { createInitialState, resetState, type AccStats, type GameState, type SkinItem } from './core/state';
 import type { Platform } from './platform/types';
 import {
   $,
   btn,
+  cellHtml,
+  CW,
   flyBall,
+  hide,
   luckMsg,
   msg,
+  perkHtml,
   render,
+  renderContBody,
+  renderCrate,
   renderMine,
+  renderShop,
+  renderSInv,
+  renderSpin,
+  renderStats,
   setGone,
+  show,
+  skCell,
+  stripReset,
+  stripSpinTo,
+  stripWin,
   updSnd,
   type Handlers,
   type Ui,
@@ -383,6 +399,227 @@ function bindMenu(): void {
   };
 }
 
+// ---- stats screen (legacy lines 260–272) ----
+
+function renderStatsView(): void {
+  renderStats(state, addStat);
+}
+
+function addStat(k: keyof AccStats): void {
+  if (pts(state) < 1) return;
+  state.acc.s[k] += 1;
+  sfx.up();
+  requestSave(); // legacy save()
+  renderStatsView();
+}
+
+function bindStats(): void {
+  btn('statsBtn').onclick = () => {
+    warmAudio();
+    hide('menu');
+    show('stats');
+    renderStatsView();
+  };
+  btn('sReset').onclick = () => {
+    const rc = 50 * accLvl(state);
+    if (state.coins < rc || spent(state) === 0) return;
+    state.coins -= rc;
+    state.acc.s = { pow: 0, gain: 0, luck: 0, hp: 0 };
+    requestSave();
+    renderStatsView();
+  };
+  btn('sBack').onclick = () => {
+    hide('stats');
+    refresh();
+    openMenu();
+  };
+}
+
+// ---- level-up crate (legacy lines 273–294) ----
+
+let spinning = false;
+
+function bindCrate(): void {
+  btn('crate').onclick = () => {
+    if (busy) return;
+    warmAudio();
+    const m = ownedMax(state);
+    const cells = Array.from({ length: 12 }, () => cellHtml(state, crateRoll(m, rng))).join('');
+    stripReset($('cstrip'), cells);
+    $('cRes').textContent = '';
+    show('crateov');
+    renderCrate(state, spinning);
+  };
+  btn('cClose').onclick = () => {
+    if (spinning) return;
+    hide('crateov');
+    refresh();
+  };
+  btn('cOpen').onclick = () => {
+    if (spinning || (state.acc.crates ?? 0) < 1) return;
+    spinning = true;
+    state.acc.crates = (state.acc.crates ?? 0) - 1;
+    const m = ownedMax(state);
+    const win = crateRoll(m, rng);
+    const N = 44;
+    const WI = 36;
+    const arr = Array.from({ length: N }, () => crateRoll(m, rng));
+    arr[WI] = win;
+    stripReset($('cstrip'), arr.map((L) => cellHtml(state, L)).join(''));
+    $('cRes').textContent = 'Losowanie…';
+    renderCrate(state, spinning);
+    const jit = (rng() - 0.5) * 40;
+    stripSpinTo($('cstrip'), $('cview'), WI, CW, jit);
+    for (let k = 1; k <= 28; k++) setTimeout(() => sfx.click(), 4200 * (1 - Math.pow(1 - k / 28, 2.4)));
+    setTimeout(() => {
+      spinning = false;
+      stripWin($('cstrip'), WI);
+      sfx.merge(win);
+      const e = state.grid.indexOf(0);
+      let where: string;
+      if (e >= 0) {
+        state.grid[e] = win;
+        where = 'na planszę';
+      } else {
+        state.inv[win] = (state.inv[win] || 0) + 1;
+        where = 'do ekwipunku';
+      }
+      $('cRes').textContent = `Wylosowano kulkę poz. ${win} (siła ${fmt(pw(win))}) — trafiła ${where}!`;
+      requestSave(); // legacy save()
+      renderCrate(state, spinning);
+    }, 4400);
+  };
+}
+
+// ---- shop / skin crates / skin inventory (legacy lines 295–375) ----
+
+let spinS = false;
+let curCrate: CrateDef | null = null;
+let contFrom: 'shop' | 'sspin' = 'shop';
+
+function renderShopView(): void {
+  renderShop(state, openSpin);
+}
+
+function renderSpinView(): void {
+  if (!curCrate) return;
+  renderSpin(state, spinS, curCrate);
+}
+
+function renderSInvView(): void {
+  renderSInv(state, toggleEquip, sellSkin, rng);
+}
+
+function openSpin(ci: number): void {
+  const crate = CRATES[ci];
+  curCrate = crate;
+  warmAudio();
+  hide('shop');
+  show('sspin');
+  $('sTitle').textContent = '📦 ' + crate.name;
+  $('sRes').textContent = '';
+  const cells = Array.from(
+    { length: 12 },
+    () => skCell(rollTheme(rng), rollRar(crate.odds, rng), rnd5(rng)),
+  ).join('');
+  stripReset($('sstrip'), cells);
+  renderSpinView();
+}
+
+function openCont(from: 'shop' | 'sspin'): void {
+  contFrom = from;
+  hide(from);
+  show('scont');
+  renderContBody();
+}
+
+function toggleEquip(id: number | null): void {
+  state.skins.cur = id === null ? null : state.skins.cur === id ? null : id;
+  sfx.click();
+  requestSave();
+  renderSInvView();
+}
+
+function sellSkin(id: number): void {
+  const it = state.skins.items.find((x) => x.id === id);
+  if (!it) return;
+  state.coins += itVal(it, rng);
+  if (state.skins.cur === id) state.skins.cur = null;
+  state.skins.items = state.skins.items.filter((x) => x.id !== id);
+  sfx.coin();
+  requestSave();
+  renderSInvView();
+}
+
+function bindShop(): void {
+  btn('shopBtn').onclick = () => {
+    warmAudio();
+    hide('menu');
+    show('shop');
+    renderShopView();
+  };
+  btn('shBack').onclick = () => {
+    hide('shop');
+    refresh();
+    openMenu();
+  };
+  btn('shInv').onclick = () => {
+    hide('shop');
+    show('sinv');
+    renderSInvView();
+  };
+  btn('siBack').onclick = () => {
+    hide('sinv');
+    show('shop');
+    renderShopView();
+  };
+  btn('sClose').onclick = () => {
+    if (spinS) return;
+    hide('sspin');
+    show('shop');
+    renderShopView();
+  };
+  btn('sCont').onclick = () => {
+    if (!spinS) openCont('sspin');
+  };
+  btn('scBack').onclick = () => {
+    hide('scont');
+    show(contFrom);
+  };
+  btn('sOpen').onclick = () => {
+    const crate = curCrate;
+    if (!crate) return;
+    if (spinS || state.coins < crate.price) return;
+    state.coins -= crate.price;
+    spinS = true;
+    const od = crate.odds;
+    const rar = rollRar(od, rng);
+    const th = rollTheme(rng);
+    const N = 44;
+    const WI = 36;
+    const L0 = rnd5(rng);
+    const arr = Array.from({ length: N }, (_, i) =>
+      i === WI ? skCell(th, rar, L0) : skCell(rollTheme(rng), rollRar(od, rng), rnd5(rng)),
+    );
+    stripReset($('sstrip'), arr.join(''));
+    $('sRes').textContent = 'Losowanie…';
+    renderSpinView();
+    const jit = (rng() - 0.5) * 40;
+    stripSpinTo($('sstrip'), $('sview'), WI, CW, jit);
+    for (let k = 1; k <= 28; k++) setTimeout(() => sfx.click(), 4200 * (1 - Math.pow(1 - k / 28, 2.4)));
+    setTimeout(() => {
+      spinS = false;
+      stripWin($('sstrip'), WI);
+      sfx.merge(2 + rar * 3);
+      const it: SkinItem = { id: state.skins.nid++, theme: th.id, rar, perks: rollPerks(rar, rng) };
+      state.skins.items.push(it);
+      $('sRes').innerHTML = `<span style="color:${RAR[rar].c}">${itName(it)}</span><br><span style="font-size:12px">${perkHtml(it, rng)}</span><br>Wartość: 🪙${fmt(itVal(it, rng))} — dodano do ekwipunku skinów`;
+      requestSave(); // legacy save()
+      renderSpinView();
+    }, 4400);
+  };
+}
+
 // ---- platform pause/resume (legacy lines 459–470) ----
 // The war-timer halves arrive with the war screen slice (legacy: wTimer).
 
@@ -438,8 +675,10 @@ export function startApp(p: Platform): void {
   bindControls();
   bindDrop();
   bindMenu();
-  // statsBtn/warBtn/shopBtn/mpBtn + #crate stay unwired until their slices;
-  // their menu buttons are hidden in index.html meanwhile.
+  bindStats();
+  bindCrate();
+  bindShop();
+  // warBtn/mpBtn stay unwired until their slices (hidden in index.html).
 
   (['click', 'keydown', 'pointerdown', 'touchstart'] as const).forEach((t) =>
     document.addEventListener(t, blockIfPaused, true),

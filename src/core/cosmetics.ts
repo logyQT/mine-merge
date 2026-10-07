@@ -136,3 +136,14 @@ export const rnd5 = (rng: Rng): number => 1 + Math.floor(rng() * 5);
 
 /** Random ball level 1..m (level-up crate strip cells). */
 export const crateRoll = (m: number, rng: Rng): number => 1 + Math.floor(rng() * m);
+
+/** Strongest ball owned anywhere (grid + inventory), floor 1 (legacy ownedMax). */
+export function ownedMax(s: GameState): number {
+  return Math.max(
+    1,
+    ...s.grid.filter((x) => x),
+    ...Object.keys(s.inv)
+      .filter((k) => s.inv[k] > 0)
+      .map(Number),
+  );
+}

@@ -37,10 +37,10 @@
    <h1>Łącz i kop</h1>
    <p style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
    <button id="play" style="background:#27b36a;font-size:22px;padding:16px"></button>
-   <!-- Hidden until their screens are ported (Phase 2 slices): war, stats, shop, multiplayer. -->
+   <!-- Hidden until its screen is ported (Phase 2 slice): war, multiplayer. -->
    <button id="warBtn" style="background:#d98a1f;font-size:20px;display:none">⚔ Wojna kulek</button>
-   <button id="statsBtn" style="background:#c24a8a;display:none">⭐ Statystyki</button>
-   <button id="shopBtn" style="background:#2a9bb5;display:none">🛍 Sklep ze skinami</button>
+   <button id="statsBtn" style="background:#c24a8a">⭐ Statystyki</button>
+   <button id="shopBtn" style="background:#2a9bb5">🛍 Sklep ze skinami</button>
    <button id="mpBtn" style="background:#2f8f5a;display:none">🌐 Multiplayer</button>
    <button id="how" style="background:var(--btn)">Jak grać</button>
    <div id="rules">
@@ -50,6 +50,49 @@
    </div>
    <button id="snd" style="background:#7a5a9e"></button>
    <button id="wipe" style="background:#b8202f">Resetuj postęp</button>
+  </div></div>
+  <div id="stats" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:28px">⭐ Statystyki</h1>
+   <div id="sInfo" style="font-weight:700"></div>
+   <div id="sList" style="display:flex;flex-direction:column;gap:8px"></div>
+   <p style="font-size:12px">Za każdy poziom konta dostajesz 1 punkt. Im wyższy poziom, tym jednak twardsze bloki w kopalni (+5% życia na poziom), więc punkty pomagają dotrzymać kroku, a nie przejść grę.</p>
+   <button id="sReset" style="background:#d9a21f"></button>
+   <button id="sBack" style="background:#7a5a9e">Wróć do menu</button>
+  </div></div>
+  <div id="crateov" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:28px">🎁 Skrzynka</h1>
+   <div id="cInfo" style="font-weight:700"></div>
+   <div id="cview"><div id="cmark"></div><div id="cstrip"></div></div>
+   <div id="cRes" style="min-height:22px;font-weight:700"></div>
+   <button id="cOpen" style="background:#d9a21f;font-size:20px">Otwórz skrzynkę</button>
+   <button id="cClose" style="background:#7a5a9e">Zamknij</button>
+  </div></div>
+  <div id="shop" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:28px">🛍 Sklep ze skinami</h1>
+   <div id="shInfo" style="font-weight:700"></div>
+   <div id="shList" style="display:flex;flex-direction:column;gap:8px"></div>
+   <button id="shInv" style="background:#c24a8a"></button>
+   <button id="shBack" style="background:#7a5a9e">Wróć do menu</button>
+  </div></div>
+  <div id="sspin" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:26px" id="sTitle">Skrzynia</h1>
+   <div id="sInfo" style="font-weight:700;font-size:13px"></div>
+   <div id="sview"><div id="smark"></div><div id="sstrip"></div></div>
+   <div id="sRes" style="min-height:66px;font-weight:700"></div>
+   <button id="sOpen" style="background:#d9a21f;font-size:20px"></button>
+   <button id="sCont" style="background:#2a9bb5">🔍 Co może wypaść</button>
+   <button id="sClose" style="background:#7a5a9e">Wróć do sklepu</button>
+  </div></div>
+  <div id="scont" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:26px">🔍 Zawartość skrzynki</h1>
+   <div id="scBody" style="text-align:left;display:flex;flex-direction:column;gap:8px"></div>
+   <button id="scBack" style="background:#7a5a9e">Wróć</button>
+  </div></div>
+  <div id="sinv" class="hide"><div class="mbox" style="margin:auto">
+   <h1 style="font-size:26px">🎒 Ekwipunek skinów</h1>
+   <div id="siInfo" style="font-weight:700"></div>
+   <div id="siList" style="display:flex;flex-direction:column;gap:8px"></div>
+   <button id="siBack" style="background:#7a5a9e">Wróć do sklepu</button>
   </div></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

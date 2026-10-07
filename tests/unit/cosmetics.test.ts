@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSeededRng } from '../../src/core/rng';
-import { crateRoll, curItem, curRar, curSkin, itName, itVal, PCOUNT, PERK, perksOf, perk, QW, RAR, rollPerks, rollRar, rollTheme, rnd5, SKINS, CRATES } from '../../src/core/cosmetics';
+import { crateRoll, curItem, curRar, curSkin, itName, itVal, ownedMax, PCOUNT, PERK, perksOf, perk, QW, RAR, rollPerks, rollRar, rollTheme, rnd5, SKINS, CRATES } from '../../src/core/cosmetics';
 import { createInitialState, type SkinItem } from '../../src/core/state';
 
 // Phase 2: cosmetics ported from legacy/app.js lines 295–324. Structural and
@@ -133,5 +133,15 @@ describe('perk / itVal / equipped skin reads', () => {
     expect(curSkin(s).id).toBe('planet');
     expect(curRar(s)).toBe(2);
     expect(itName(s.skins.items[0])).toBe('Planety · Epicki');
+  });
+
+  it('ownedMax: strongest ball across grid + inventory, floor 1', () => {
+    const s = createInitialState();
+    expect(ownedMax(s)).toBe(1); // empty state floors at 1
+    s.grid[3] = 5;
+    s.inv = { 7: 2, 2: 0 }; // zero-count entries do not count
+    expect(ownedMax(s)).toBe(7);
+    s.inv = {};
+    expect(ownedMax(s)).toBe(5);
   });
 });

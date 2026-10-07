@@ -1,9 +1,10 @@
 # Phase 3 — Canvas board in Phaser
 
-Status: **PRs 1–3 implemented** (started 2026-10-07). Decision record lives in PLAN.md
-§Phase 3 ("Decisions (recorded before starting)") — the short version: **the 5×5 merge
-grid goes to canvas together with `#mine`** (kit guideline: *board → canvas,
-forms/lists/text → DOM*).
+Status: **complete pending merge** — PRs #24 → #25 → #26 open (stacked; merge in that
+order, GitHub retargets automatically). Human approved the side-by-side visuals
+(2026-10-07). Decision record lives in PLAN.md §Phase 3 ("Decisions (recorded before
+starting)") — the short version: **the 5×5 merge grid goes to canvas together with
+`#mine`** (kit guideline: *board → canvas, forms/lists/text → DOM*). Next: Phase 4.
 
 ## Stacked-PR slicing (per AGENTS.md)
 
@@ -17,9 +18,11 @@ forms/lists/text → DOM*).
 
 - [x] Mine loop (spawn → merge → drop → destroy → coins → upgrade) fully in Phaser (PR 2)
 - [x] DOM board rendering deleted (`#grid`/`#mine` are transparent spacers only)
-- [ ] Side-by-side visual check vs `legacy/` passes — **human**; `node scripts/visual-check.mjs`
-      shoots both (kit + legacy, same fixture) into `${tmpdir}/mine-merge-visual-check/`
-      (18 paired shots: board/selected/drop burst/full/mine/360 top+bottom)
+- [x] Side-by-side visual check vs `legacy/` — **human reviewed the paired shots and
+      approved** (2026-10-07). Accepted deviation: the falling (`flyBall`) animation
+      reads slightly different from the DOM original — **fine as-is, do not "fix"**
+      unless asked. Tool stays: `node scripts/visual-check.mjs` → 18 pairs in
+      `${tmpdir}/mine-merge-visual-check/`
 - [x] All gates green: `npm test` (144), `typecheck`, `test:e2e` (15), `build:yt`/`build:web`, 3 greps
 
 ## Notes / gotchas discovered while working

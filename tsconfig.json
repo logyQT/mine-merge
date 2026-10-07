@@ -13,8 +13,9 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "tests", "vite.config.ts"]
 }

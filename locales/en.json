@@ -1,0 +1,9 @@
+{
+  "app.title": "Kopalnia",
+  "hud.crate": "🎁 Open crate ({n})",
+  "hud.dropResult": "Earned 🪙{coins}. Returned {back} to the board, {inv} to the inventory.",
+  "war.prepare": {
+    "one": "Enemy level {eL} fielded {n} ball (yours: {pN}). Careful: a loss may cost you a ball (50%)!",
+    "other": "Enemy level {eL} fielded {n} balls (yours: {pN}). Careful: a loss may cost you a ball (50%)!"
+  }
+}

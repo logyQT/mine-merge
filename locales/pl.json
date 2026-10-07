@@ -1,0 +1,21 @@
+{
+  "app.title": "Kopalnia",
+  "hud.crate": {
+    "one": "🎁 Otwórz skrzynkę ({n})",
+    "few": "🎁 Otwórz skrzynkę ({n})",
+    "many": "🎁 Otwórz skrzynkę ({n})",
+    "other": "🎁 Otwórz skrzynkę ({n})"
+  },
+  "hud.dropResult": {
+    "one": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "few": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "many": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "other": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}."
+  },
+  "war.prepare": {
+    "one": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "few": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "many": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "other": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!"
+  }
+}

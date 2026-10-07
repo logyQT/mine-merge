@@ -60,7 +60,33 @@ the source of truth — this file is the working log + implementation notes. Pre
 
 ## Status
 
-- [ ] PR 1 … (log branches/PRs here as they open)
+### PR 2 — `feature/phase4-i18n` (stacked on PR 1)
+
+The game-agnostic engine (kept free of DOM/Phaser/game imports — a primary
+Phase 6 kit candidate):
+
+- `src/i18n/index.ts` — `t(key, params)` with `{param}` interpolation,
+  `setLocale()` + `onLocaleChange()` (the app re-renders DOM **and** canvas
+  from that hook in PR 3), `resolveLanguage()` (`pl*`→pl, `en*`→en, else
+  `en`), `numF()`, `selectVariant()` (exported for tests), `applyStatic()`
+  (opt-in `data-i18n` / `data-i18n-aria` / `data-i18n-ph` sweep).
+- **Plural message keys** are objects keyed by `Intl.PluralRules` categories
+  (`one/few/many/other` pl, `one/other` en) selected through `params.n` — so
+  plural messages carry their driving count as `{n}`. Shipped pl variants are
+  byte-identical across categories: legacy renders **bare numbers**, so
+  Polish never declines in these templates (the snapshot + a dedicated test
+  pin that rule); en `war.prepare` genuinely declines (1 ball / 3 balls).
+- `numF()` mirrors core `fmt()` below 10 000 (whole numbers, no grouping —
+  legacy pixel parity) and compacts locale-aware from there up (`10K` en,
+  `10 tys.`/`1,5 mln` pl). Ball-texture labels stay on the invariant core
+  `fmt()` (baked at generation). `core/economy.fmt` untouched (tests pin it).
+- `locales/pl.json` seeds the extraction (`app.title`, `hud.crate`,
+  `hud.dropResult`, `war.prepare` — the plural/hard cases from the handoff);
+  PR 3 grows it to every string while wiring. Key parity pl↔en + snapshots
+  pinned in `tests/unit/i18n.test.ts`.
+- `platform.getLanguage()` mock: default **pl** locally (no navigator
+  sniffing), `opts.language` for tests, `?lang=<tag>` URL override for the
+  e2e EN smoke / layout checks (`platform-mock.test.ts` updated).
 
 ### PR 1 — `feature/phase4-warscene` (open, stacked base `main`)
 

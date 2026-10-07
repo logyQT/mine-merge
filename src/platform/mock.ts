@@ -102,8 +102,15 @@ export function createMockPlatform(opts: MockPlatformOptions = {}): MockPlatform
 
     getLanguage() {
       if (opts.language) return opts.language;
-      const nav = typeof navigator !== 'undefined' ? navigator.language : '';
-      return nav.toLowerCase().startsWith('pl') ? 'pl' : 'en';
+      // Test/dev override: ?lang=en (or any tag — i18n resolves it) boots the
+      // kit in another locale; used by the e2e EN smoke and layout checks.
+      if (typeof location !== 'undefined') {
+        const q = new URLSearchParams(location.search).get('lang');
+        if (q) return q;
+      }
+      // Default pl — the kit's source locale (PLAN.md §Phase 4: "default pl
+      // locally"); real platforms report through their own adapter.
+      return 'pl';
     },
     isAudioEnabled() {
       return audioOn;

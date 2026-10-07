@@ -1,0 +1,37 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`locale files > pl.json is byte-identical to the extracted legacy strings (snapshot) 1`] = `
+{
+  "app.title": "Kopalnia",
+  "hud.crate": {
+    "few": "🎁 Otwórz skrzynkę ({n})",
+    "many": "🎁 Otwórz skrzynkę ({n})",
+    "one": "🎁 Otwórz skrzynkę ({n})",
+    "other": "🎁 Otwórz skrzynkę ({n})",
+  },
+  "hud.dropResult": {
+    "few": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "many": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "one": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+    "other": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
+  },
+  "war.prepare": {
+    "few": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "many": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "one": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+    "other": "Wróg poz. {eL} wystawił {n} kulek (twoich: {pN}). Uwaga: przegrana grozi stratą kulki (50%)!",
+  },
+}
+`;
+
+exports[`locale files > pl.json is byte-identical to the extracted legacy strings (snapshot) 2`] = `
+{
+  "app.title": "Kopalnia",
+  "hud.crate": "🎁 Open crate ({n})",
+  "hud.dropResult": "Earned 🪙{coins}. Returned {back} to the board, {inv} to the inventory.",
+  "war.prepare": {
+    "one": "Enemy level {eL} fielded {n} ball (yours: {pN}). Careful: a loss may cost you a ball (50%)!",
+    "other": "Enemy level {eL} fielded {n} balls (yours: {pN}). Careful: a loss may cost you a ball (50%)!",
+  },
+}
+`;

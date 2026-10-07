@@ -185,4 +185,45 @@ describe('robustness', () => {
     expect(s.coins).toBe(999);
     expect(readSave(g.window).coins).toBe(999);
   });
+
+  // Phase 0.3 — normalize() edge cases pinned BEFORE the core port: JSON
+  // nulls are the realistic schema-drift case (older/newer writers).
+  it('JSON nulls in every nullable field fall back to defaults', () => {
+    const g = boot({
+      save: {
+        coins: 777,
+        topRow: 0,
+        grid: null, rows: null, inv: null,
+        blastLvl: null, blastCost: null, bombs: null, bombCost: null,
+        war: null, acc: null, econ: null, skins: null, bestDepth: null,
+      },
+    });
+    const s = g.api.save();
+    expect(s.coins).toBe(777); // fields that EXIST are untouched
+    expect(s.grid).toEqual(Array(25).fill(0));
+    expect(s.rows).toHaveLength(VIEW);
+    expect(s.topRow).toBe(0);
+    expect(s.inv).toEqual({});
+    expect(s.blastLvl).toBe(0);
+    expect(s.blastCost).toBe(80);
+    expect(s.bombs).toBe(0);
+    expect(s.bombCost).toBe(250);
+    expect(s.war).toEqual({ wave: 1, fire: 0, slow: 0, weak: 0 });
+    expect(s.acc).toEqual({ xp: 0, s: { pow: 0, gain: 0, luck: 0, hp: 0 } });
+    expect(s.econ).toEqual({ pas: 0, dis: 0 });
+    expect(s.skins).toEqual({ items: [], cur: null, nid: 1 });
+    expect(s.bestDepth).toBe(0);
+    expectFreshRows(s.rows, 0, accLvlOf(0));
+  });
+
+  it('explicit undefined values are dropped by save() and reset on next boot', () => {
+    // Object.assign() takes explicit undefined as-is; JSON.stringify then
+    // omits the key, so the NEXT boot falls back to the default.
+    const g = boot();
+    g.api.set({ coins: undefined });
+    const s = g.api.save();
+    expect(s).not.toHaveProperty('coins');
+    const g2 = boot({ save: s });
+    expect(g2.api.save().coins).toBe(30);
+  });
 });

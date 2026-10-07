@@ -13,7 +13,8 @@ import { curItem, curRar, curSkin, CRATES, itName, itVal, ownedMax, PCOUNT, PERK
 import { accLvl, disCost, fmt, incMul, pasCost, pts, pw, renChance, sellPrice, spent, spawnPrice } from '../core/economy';
 import { depth, rowAt, viewRows } from '../core/mine';
 import type { Rng } from '../core/rng';
-import type { AccStats, GameState, Perk, SkinItem } from '../core/state';
+import type { AccStats, GameState, Perk, SkinItem, WarPowerKey } from '../core/state';
+import { type Combatant, type Fight, wcost } from '../core/war';
 
 export interface Ui {
   sel: number | null;
@@ -459,4 +460,48 @@ export function renderContBody(): void {
     )
     .join('')}</div>`;
   $('scBody').innerHTML = h;
+}
+
+// ---- war screen (legacy lines 211–230) ----
+
+export function wLog(t: string): void {
+  $('wLog').textContent = t;
+}
+
+/** One army row: ball + HP bar + burn/slow/weak markers (legacy row()). */
+function warRow(s: GameState, arr: Combatant[]): string {
+  return arr
+    .map(
+      (b) =>
+        `<div class="wb${b.hp <= 0 ? ' dead' : ''}"><div class="it" style="${bSt(s, b.L)}">${bIn(s, b.L)}</div><div class="hp"><i style="width:${Math.max(0, (b.hp / b.max) * 100)}%"></i></div><div>${b.burn > 0 ? '🔥' : ''}${b.slow > 0 ? '❄' : ''}${b.wk > 0 ? '☠' : ''}&nbsp;</div></div>`,
+    )
+    .join('');
+}
+
+const WAR_UPGRADES: Array<[string, string, WarPowerKey]> = [
+  ['pFire', '🔥 Podpalenie', 'fire'],
+  ['pSlow', '❄ Spowolnienie', 'slow'],
+  ['pWeak', '☠ Osłabienie', 'weak'],
+];
+
+export function renderWar(s: GameState, fight: Fight | null, mpOn: boolean): void {
+  $('wInfo').textContent = `⭐ Poziom konta ${accLvl(s)} · Wygrane: ${s.war.wave - 1} · 🪙${s.coins}`;
+  const fT = fight && (fight.flip ? fight.p : fight.e);
+  const fB = fight && (fight.flip ? fight.e : fight.p);
+  $('eRow').innerHTML = fT ? warRow(s, fT) : '';
+  $('pRow').innerHTML = fB ? warRow(s, fB) : '';
+  const live = !!(fight && fight.run && !fight.over);
+  btn('wGo').textContent = !fight ? 'Odśwież' : fight.over ? 'Dalej' : live ? 'Walka trwa…' : 'Walka!';
+  btn('wGo').disabled = live;
+  WAR_UPGRADES.forEach(([id, n, k]) => {
+    btn(id).textContent = `${n} ${s.war[k]} 🪙${wcost(s.war[k])}`;
+    btn(id).disabled = live || s.coins < wcost(s.war[k]);
+  });
+  if (mpOn) {
+    btn('wGo').textContent = fight && fight.over ? 'Zakończ' : 'Walka PvP…';
+    btn('wGo').disabled = !(fight && fight.over);
+    (btn('pFire').parentElement as HTMLElement).style.display = 'none';
+  } else {
+    (btn('pFire').parentElement as HTMLElement).style.display = '';
+  }
 }

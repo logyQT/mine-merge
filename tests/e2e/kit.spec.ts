@@ -118,6 +118,34 @@ test('level-up crate: opens, spins, awards the ball', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedSave(page); // the fixture brings balls to fight with
+  await gotoKit(page); // boot menu is open — war launches from here
+
+  await page.getByRole('button', { name: 'Wojna' }).click();
+  await expect(page.locator('#war')).toBeVisible();
+  await expect(page.locator('#wLog')).toContainText('Wróg poz.'); // prepareFight rolled
+
+  // Buy one war upgrade (fixture has coins): 100 → next costs 220.
+  await page.locator('#pSlow').click();
+  await expect(page.locator('#pSlow')).toHaveText('❄ Spowolnienie 1 🪙220');
+
+  // Start the fight, wait for a verdict, then roll the next battle.
+  await expect(page.locator('#wGo')).toHaveText('Walka!');
+  await page.locator('#wGo').click();
+  await expect(page.locator('#wLog')).toHaveText('Bitwa!');
+  await expect(page.locator('#wLog')).toContainText(/Zwycięstwo!|Porażka/, { timeout: 30000 });
+  await expect(page.locator('#wGo')).toHaveText('Dalej');
+  await page.locator('#wGo').click();
+  await expect(page.locator('#wLog')).toContainText('Wróg poz.');
+
+  await page.getByRole('button', { name: 'Wróć do menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 const VIEWPORTS = [
   { width: 360, height: 640 },
   { width: 800, height: 600 },

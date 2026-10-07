@@ -23,11 +23,20 @@ import {
   sellPrice,
   spent,
   spawnPrice,
+  type LevelUp,
 } from './core/economy';
 import { advanceTopRow, applyBomb, depth, land, planDrop } from './core/mine';
 import type { Rng } from './core/rng';
 import { serialize } from './core/save';
-import { createInitialState, resetState, type AccStats, type GameState, type SkinItem } from './core/state';
+import {
+  createInitialState,
+  resetState,
+  type AccStats,
+  type GameState,
+  type SkinItem,
+  type WarPowerKey,
+} from './core/state';
+import { prepareFight, tick, wcost, wEnd, type Fight } from './core/war';
 import type { Platform } from './platform/types';
 import {
   $,
@@ -47,6 +56,7 @@ import {
   renderSInv,
   renderSpin,
   renderStats,
+  renderWar,
   setGone,
   show,
   skCell,
@@ -54,6 +64,7 @@ import {
   stripSpinTo,
   stripWin,
   updSnd,
+  wLog,
   type Handlers,
   type Ui,
 } from './ui/game-view';
@@ -114,15 +125,19 @@ function refresh(): void {
   requestSave(); // legacy render() called save() here
 }
 
-/** addXp port: core returns the level-up, the toast + jingle stay here. */
-function gainXp(n: number): void {
-  const up = addXp(state, n, rng);
+/** Level-up side effects: toast + jingle 60 ms later (legacy addXp inline). */
+function announceLevelUp(up: LevelUp | null): void {
   if (up) {
     setTimeout(() => {
       msg(`⭐ Awans! Poziom konta ${up.level}` + (up.crates ? ' · 🎁 Skrzynka!' : ''));
       sfx.up();
     }, 60);
   }
+}
+
+/** addXp port: core applies the XP; the announcement stays here. */
+function gainXp(n: number): void {
+  announceLevelUp(addXp(state, n, rng));
 }
 
 // ---- merge grid interactions (legacy tap / take) ----
@@ -620,12 +635,103 @@ function bindShop(): void {
   };
 }
 
+// ---- war screen (legacy lines 211–259) ----
+
+let fight: Fight | null = null;
+let wTimer: ReturnType<typeof setInterval> | null = null;
+let warWasRunning = false;
+
+function stopWarTimer(): void {
+  if (wTimer !== null) {
+    clearInterval(wTimer);
+    wTimer = null;
+  }
+}
+
+function renderWarView(): void {
+  renderWar(state, fight, false); // mpOn: true lands with the multiplayer slice
+}
+
+function tickOnce(): void {
+  if (!fight) return;
+  const ev = tick(state, fight, rng);
+  for (let i = 0; i < ev.hits; i++) sfx.hit(); // legacy tick called sfx per attack
+  for (let i = 0; i < ev.kills; i++) sfx.brk();
+  if (ev.done) endFight(ev.done.playerWon);
+  renderWarView();
+}
+
+function endFight(win: boolean): void {
+  if (!fight) return;
+  stopWarTimer();
+  const r = wEnd(state, fight, win, rng);
+  if (win) sfx.coin();
+  announceLevelUp(r.levelUp);
+  wLog(r.message);
+  requestSave(); // legacy save()
+  renderWarView();
+}
+
+function prepareWar(): void {
+  stopWarTimer(); // legacy prepare(): clearInterval(wTimer)
+  const p = prepareFight(state, rng);
+  fight = p.fight;
+  wLog(p.message);
+  renderWarView();
+}
+
+function bindWar(): void {
+  btn('warBtn').onclick = () => {
+    warmAudio();
+    hide('menu');
+    show('war');
+    prepareWar();
+  };
+  btn('wGo').onclick = () => {
+    if (!fight || fight.over) {
+      prepareWar();
+      return;
+    }
+    if (!fight.run) {
+      fight.run = true;
+      wLog('Bitwa!');
+      wTimer = setInterval(tickOnce, 100);
+      renderWarView();
+    }
+  };
+  const ups: Array<[string, WarPowerKey]> = [
+    ['pFire', 'fire'],
+    ['pSlow', 'slow'],
+    ['pWeak', 'weak'],
+  ];
+  ups.forEach(([id, k]) => {
+    btn(id).onclick = () => {
+      const c = wcost(state.war[k]);
+      if (state.coins < c || (fight && fight.run && !fight.over)) return;
+      state.coins -= c;
+      state.war[k] += 1;
+      sfx.up();
+      requestSave();
+      renderWarView();
+    };
+  });
+  btn('wBack').onclick = () => {
+    stopWarTimer();
+    fight = null;
+    hide('war');
+    refresh();
+    openMenu();
+  };
+}
+
 // ---- platform pause/resume (legacy lines 459–470) ----
 // The war-timer halves arrive with the war screen slice (legacy: wTimer).
 
 function pauseGame(): void {
   if (paused) return;
   paused = true;
+  warWasRunning = !!(fight && fight.run && !fight.over);
+  stopWarTimer();
   stopPassive();
   try {
     document.getAnimations().forEach((a) => {
@@ -645,6 +751,8 @@ function resumeGame(): void {
   if (!paused) return;
   paused = false;
   startPassive();
+  if (warWasRunning && fight && !fight.over && !wTimer) wTimer = setInterval(tickOnce, 100);
+  warWasRunning = false;
   try {
     document.getAnimations().forEach((a) => {
       try {
@@ -678,7 +786,8 @@ export function startApp(p: Platform): void {
   bindStats();
   bindCrate();
   bindShop();
-  // warBtn/mpBtn stay unwired until their slices (hidden in index.html).
+  bindWar();
+  // mpBtn stays unwired until the multiplayer slice (hidden in index.html).
 
   (['click', 'keydown', 'pointerdown', 'touchstart'] as const).forEach((t) =>
     document.addEventListener(t, blockIfPaused, true),

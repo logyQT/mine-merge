@@ -25,6 +25,9 @@ export interface WarState {
   weak: number;
 }
 
+/** The three upgradable war powers (buttons pFire/pSlow/pWeak). */
+export type WarPowerKey = 'fire' | 'slow' | 'weak';
+
 export interface AccStats {
   pow: number;
   gain: number;

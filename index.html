@@ -37,8 +37,8 @@
    <h1>Łącz i kop</h1>
    <p style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
    <button id="play" style="background:#27b36a;font-size:22px;padding:16px"></button>
-   <!-- Hidden until its screen is ported (Phase 2 slice): war, multiplayer. -->
-   <button id="warBtn" style="background:#d98a1f;font-size:20px;display:none">⚔ Wojna kulek</button>
+   <!-- Hidden until its slice: multiplayer. -->
+   <button id="warBtn" style="background:#d98a1f;font-size:20px">⚔ Wojna kulek</button>
    <button id="statsBtn" style="background:#c24a8a">⭐ Statystyki</button>
    <button id="shopBtn" style="background:#2a9bb5">🛍 Sklep ze skinami</button>
    <button id="mpBtn" style="background:#2f8f5a;display:none">🌐 Multiplayer</button>
@@ -50,6 +50,21 @@
    </div>
    <button id="snd" style="background:#7a5a9e"></button>
    <button id="wipe" style="background:#b8202f">Resetuj postęp</button>
+  </div></div>
+  <div id="war" class="hide"><div class="mbox" style="max-width:380px;margin:auto">
+   <h1 style="font-size:28px">⚔ Wojna kulek</h1>
+   <div id="wInfo" style="font-weight:700"></div>
+   <div id="eRow" class="wrow"></div>
+   <div id="wLog"></div>
+   <div id="pRow" class="wrow"></div>
+   <button id="wGo" style="background:#27b36a;font-size:22px"></button>
+   <div class="row">
+    <button id="pFire" style="flex:1;background:#e0572f;font-size:12px"></button>
+    <button id="pSlow" style="flex:1;background:#2a9bb5;font-size:12px"></button>
+    <button id="pWeak" style="flex:1;background:#6a4bd0;font-size:12px"></button>
+   </div>
+   <p style="font-size:12px">🔥 podpala wrogów (obrażenia z czasem) · ❄ spowalnia ich ataki · ☠ po zniszczeniu wroga osłabia pozostałych. Do walki idzie 5 twoich najsilniejszych kulek z planszy i ekwipunku. Za porażkę masz 50% szans na utratę jednej losowej kulki z walczących. Przeciwnik jest losowany w granicach ±3 poziomów od twojego poziomu konta (⭐ rośnie z kopania i wygranych).</p>
+   <button id="wBack" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="stats" class="hide"><div class="mbox" style="margin:auto">
    <h1 style="font-size:28px">⭐ Statystyki</h1>

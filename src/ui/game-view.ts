@@ -8,19 +8,25 @@
 // the board (#grid + #mine) renders on the canvas via MineScene (./board) —
 // this module owns the menu/modal screens: stats, crates, shop, skins, war
 // and multiplayer, plus the skin-styling helpers their content uses.
+// Phase 4 (i18n): every string goes through t(); display numbers through
+// numF(); content names from core/cosmetics are looked up by id/index
+// (rar.{i}, skin.{id}, perk.{t}, crate.name.{i}) — core keeps its Polish
+// values as the tested fallback. The war rows + log render on the canvas
+// (./war-canvas → WarScene); the shell around them stays DOM.
 //
 // Signatures: state first, transient UI and callbacks passed in, injected
 // RNG last.
 
 import '../../legacy/style.css';
-import { curItem, curRar, curSkin, CRATES, itName, itVal, ownedMax, PCOUNT, PERK, perksOf, QW, RAR, SKINS, type CrateDef } from '../core/cosmetics';
+import { curItem, curRar, curSkin, CRATES, itVal, ownedMax, PCOUNT, PERK, perksOf, QW, RAR, SKINS, type CrateDef } from '../core/cosmetics';
 import { accLvl, fmt, pts, pw, spent } from '../core/economy';
 import type { Rng } from '../core/rng';
 import type { AccStats, GameState, Perk, SkinItem, WarPowerKey } from '../core/state';
 import { type Fight, wcost } from '../core/war';
+import { numF, t } from '../i18n';
 import { $, btn } from './hud';
 import { color } from './palette';
-import { warLog, warRender } from './war-canvas';
+import { warRender } from './war-canvas';
 
 // ---- skin styling (legacy stFor/bSt/skBg/skSym/bIn) ----
 
@@ -41,10 +47,21 @@ function stFor(k: ReturnType<typeof curSkin>, L: number, r: number): string {
 
 const bSt = (s: GameState, L: number): string => stFor(curSkin(s), L, curRar(s));
 
+// Ball labels are baked into textures (textures.ts) — keep them on the
+// invariant core fmt(), not the locale number format (Phase 4 decision).
 const bIn = (s: GameState, L: number): string => {
   const k = curSkin(s);
   return k.sym ? `${skSym(k, L)}<small>${L}·${fmt(pw(L))}</small>` : `${L}<small>${fmt(pw(L))}</small>`;
 };
+
+// ---- content names from core data (Phase 4: locale lookups) ----
+
+/** Localized "Theme · Rarity" (legacy itName, resolved through t()). */
+export const nameOf = (it: SkinItem): string => `${t(`skin.${it.theme}`)} · ${t(`rar.${it.rar}`)}`;
+
+/** '%' stays '%'; the level unit abbreviates per locale (' poz.' / ' lvl'). */
+const perkUnit = (type: keyof typeof PERK): string =>
+  PERK[type].u === '%' ? '%' : t('common.levelUnit');
 
 // ---- modal screen navigation (legacy classList toggles) ----
 
@@ -75,24 +92,25 @@ export function stripWin(strip: HTMLElement, wi: number): void {
 // ---- stats screen (legacy lines 260–270) ----
 
 export const STATS: Array<[keyof AccStats, string, string]> = [
-  ['pow', '💪 Siła kulek', '+8% obrażeń (kopalnia i wojna)'],
-  ['gain', '💰 Zysk', '+6% monet'],
-  ['luck', '🍀 Szczęście', '+2% szans na diament w blokach'],
-  ['hp', '❤ Wytrzymałość', '+6% życia kulek w wojnie'],
+  ['pow', 'stat.pow.name', 'stat.pow.desc'],
+  ['gain', 'stat.gain.name', 'stat.gain.desc'],
+  ['luck', 'stat.luck.name', 'stat.luck.desc'],
+  ['hp', 'stat.hp.name', 'stat.hp.desc'],
 ];
 
 export function renderStats(s: GameState, onAdd: (k: keyof AccStats) => void): void {
-  $('sInfo').textContent = `Poziom ${accLvl(s)} · wolne punkty: ${pts(s)}`;
+  $('sInfo').textContent = t('stats.info', { l: accLvl(s), p: pts(s) });
   const L = $('sList');
   L.innerHTML = '';
-  STATS.forEach(([k, n, d]) => {
+  STATS.forEach(([k, nameKey, descKey]) => {
+    const name = t(nameKey);
     const r = document.createElement('div');
     r.style.cssText =
       'display:flex;align-items:center;gap:8px;background:var(--line);padding:8px;border-radius:10px;text-align:left';
-    r.innerHTML = `<div style="flex:1"><b>${n}: ${s.acc.s[k]}</b><div style="font-size:12px">${d}</div></div>`;
+    r.innerHTML = `<div style="flex:1"><b>${name}: ${s.acc.s[k]}</b><div style="font-size:12px">${t(descKey)}</div></div>`;
     const b = document.createElement('button');
     b.textContent = '+';
-    b.setAttribute('aria-label', 'Dodaj punkt: ' + n);
+    b.setAttribute('aria-label', t('stats.addPoint', { name }));
     b.style.cssText = 'background:#27b36a;width:44px';
     b.disabled = pts(s) < 1;
     b.onclick = () => onAdd(k);
@@ -100,7 +118,7 @@ export function renderStats(s: GameState, onAdd: (k: keyof AccStats) => void): v
     L.appendChild(r);
   });
   const rc = 50 * accLvl(s);
-  btn('sReset').textContent = `Przydziel od nowa 🪙${rc}`;
+  btn('sReset').textContent = t('stats.reset', { c: rc });
   btn('sReset').disabled = s.coins < rc || spent(s) === 0;
 }
 
@@ -111,7 +129,7 @@ export function cellHtml(s: GameState, L: number): string {
 }
 
 export function renderCrate(s: GameState, spinning: boolean): void {
-  $('cInfo').textContent = `Skrzynki: ${s.acc.crates || 0} · losuje kulki od poz. 1 do ${ownedMax(s)}`;
+  $('cInfo').textContent = t('crate.info', { n: s.acc.crates || 0, max: ownedMax(s) });
   btn('cOpen').disabled = spinning || (s.acc.crates ?? 0) < 1; // legacy: !(acc.crates > 0)
   btn('cClose').disabled = spinning;
 }
@@ -125,8 +143,12 @@ type SkinDefLike = ReturnType<typeof curSkin>;
 
 export function renderShop(s: GameState, onBuy: (ci: number) => void): void {
   const cur = curItem(s);
-  $('shInfo').textContent = `🪙${fmt(s.coins)} · skiny w ekwipunku: ${s.skins.items.length} · założony: ${cur ? itName(cur) : 'Klasyczne'}`;
-  btn('shInv').textContent = `🎒 Ekwipunek skinów (${s.skins.items.length})`;
+  $('shInfo').textContent = t('shop.info', {
+    coins: numF(s.coins),
+    n: s.skins.items.length,
+    name: cur ? nameOf(cur) : t('common.classic'),
+  });
+  btn('shInv').textContent = t('shop.invButton', { n: s.skins.items.length });
   const L = $('shList');
   L.innerHTML = '';
   CRATES.forEach((cr, ci) => {
@@ -134,12 +156,12 @@ export function renderShop(s: GameState, onBuy: (ci: number) => void): void {
     r.style.cssText =
       'display:flex;align-items:center;gap:8px;background:var(--line);padding:8px;border-radius:10px;text-align:left';
     const od = cr.odds
-      .map((p, i) => (p ? `<span style="color:${RAR[i].c}">${RAR[i].n} ${p}%</span>` : ''))
+      .map((p, i) => (p ? `<span style="color:${RAR[i].c}">${t(`rar.${i}`)} ${p}%</span>` : ''))
       .filter(Boolean)
       .join(' · ');
-    r.innerHTML = `<div style="flex:1"><b>📦 ${cr.name}</b><div style="font-size:11px;margin-top:3px">${od}</div></div>`;
+    r.innerHTML = `<div style="flex:1"><b>📦 ${t(`crate.name.${ci}`)}</b><div style="font-size:11px;margin-top:3px">${od}</div></div>`;
     const b = document.createElement('button');
-    b.textContent = `🪙${fmt(cr.price)}`;
+    b.textContent = `🪙${numF(cr.price)}`;
     b.style.cssText = 'width:90px;font-size:14px;padding:10px 4px;background:#d9a21f';
     b.onclick = () => onBuy(ci);
     r.appendChild(b);
@@ -151,14 +173,14 @@ export function renderSpin(s: GameState, spinning: boolean, crate: CrateDef): vo
   // Legacy quirk kept for parity: $('sInfo') resolves to the FIRST #sInfo in
   // the document — the stats screen's — so the spin screen's own copy stays
   // blank, exactly like the original (duplicate ids preserved in index.html).
-  $('sInfo').textContent = `🪙${fmt(s.coins)} · Moce skina działają po jego założeniu`;
-  btn('sOpen').textContent = `Otwórz 🪙${fmt(crate.price)}`;
+  $('sInfo').textContent = t('spin.info', { coins: numF(s.coins) });
+  btn('sOpen').textContent = t('spin.open', { c: numF(crate.price) });
   btn('sOpen').disabled = spinning || s.coins < crate.price;
   btn('sClose').disabled = spinning;
 }
 
 const fmtPerk = (p: Perk): string =>
-  `${PERK[p.t].ic} ${PERK[p.t].n} +${PERK[p.t].v[p.q]}${PERK[p.t].u} (${RAR[p.q].n})`;
+  `${PERK[p.t].ic} ${t(`perk.${p.t}`)} +${PERK[p.t].v[p.q]}${perkUnit(p.t)} (${t(`rar.${p.q}`)})`;
 
 export const perkHtml = (it: SkinItem, rng: Rng): string =>
   perksOf(it, rng)
@@ -172,7 +194,10 @@ export function renderSInv(
   rng: Rng,
 ): void {
   const cur = curItem(s);
-  $('siInfo').textContent = `🪙${fmt(s.coins)} · założony: ${cur ? itName(cur) : 'Klasyczne'}`;
+  $('siInfo').textContent = t('skinsInv.info', {
+    coins: numF(s.coins),
+    name: cur ? nameOf(cur) : t('common.classic'),
+  });
   const L = $('siList');
   L.innerHTML = '';
   const mkRow = (inner: string, btns: HTMLButtonElement[]): void => {
@@ -183,17 +208,24 @@ export function renderSInv(
     btns.forEach((b) => r.appendChild(b));
     L.appendChild(r);
   };
-  const mkBtn = (t: string, bg: string, fn: () => void, dis?: boolean): HTMLButtonElement => {
+  const mkBtn = (text: string, bg: string, fn: () => void, dis?: boolean): HTMLButtonElement => {
     const b = document.createElement('button');
-    b.textContent = t;
+    b.textContent = text;
     b.style.cssText = 'font-size:12px;padding:8px 6px;background:' + bg;
     b.disabled = !!dis;
     b.onclick = fn;
     return b;
   };
   mkRow(
-    `<div style="flex:1"><b>Klasyczne</b><div style="font-size:11px">domyślne kulki</div></div>`,
-    [mkBtn(s.skins.cur === null ? 'Założone ✓' : 'Załóż', '#27b36a', () => onToggle(null), s.skins.cur === null)],
+    `<div style="flex:1"><b>${t('common.classic')}</b><div style="font-size:11px">${t('skinsInv.classicHint')}</div></div>`,
+    [
+      mkBtn(
+        s.skins.cur === null ? t('skinsInv.equipped') : t('skinsInv.equip'),
+        '#27b36a',
+        () => onToggle(null),
+        s.skins.cur === null,
+      ),
+    ],
   );
   [...s.skins.items].sort((a, b) => b.rar - a.rar).forEach((it) => {
     const k = SKINS.find((x) => x.id === it.theme) ?? SKINS[0];
@@ -205,10 +237,10 @@ export function renderSInv(
       .join('');
     const on = s.skins.cur === it.id;
     mkRow(
-      `<div style="flex:1"><b style="color:${RAR[it.rar].c}">${itName(it)}</b><div style="font-size:11px">Wartość 🪙${fmt(itVal(it, rng))}</div><div style="font-size:11px;margin-top:3px">${perkHtml(it, rng)}</div><div style="display:flex;gap:6px;margin-top:4px">${pv}</div></div>`,
+      `<div style="flex:1"><b style="color:${RAR[it.rar].c}">${nameOf(it)}</b><div style="font-size:11px">${t('skinsInv.value', { v: numF(itVal(it, rng)) })}</div><div style="font-size:11px;margin-top:3px">${perkHtml(it, rng)}</div><div style="display:flex;gap:6px;margin-top:4px">${pv}</div></div>`,
       [
-        mkBtn(on ? 'Zdejmij' : 'Załóż', '#27b36a', () => onToggle(it.id)),
-        mkBtn(`Sprzedaj 🪙${fmt(itVal(it, rng))}`, '#b8202f', () => onSell(it.id)),
+        mkBtn(on ? t('skinsInv.unequip') : t('skinsInv.equip'), '#27b36a', () => onToggle(it.id)),
+        mkBtn(t('skinsInv.sell', { v: numF(itVal(it, rng)) }), '#b8202f', () => onSell(it.id)),
       ],
     );
   });
@@ -217,27 +249,39 @@ export function renderSInv(
 /** The "what can drop" explainer body (legacy openCont, lines 365–369). */
 export function renderContBody(): void {
   const od = CRATES[0].odds;
-  let h = `<div style="font-size:12px">Wszystkie skiny są w jednej skrzynce. Motywy: ${SKINS.slice(1)
-    .map((k) => k.name)
-    .join(', ')}. Każdy skin ma losowe moce (działają po założeniu), a ich jakość zależy od rzadkości skina.</div>`;
+  let h = `<div style="font-size:12px">${t('cont.intro', {
+    themes: SKINS.slice(1)
+      .map((k) => t(`skin.${k.id}`))
+      .join(', '),
+  })}</div>`;
   RAR.forEach((r, i) => {
-    h += `<div style="background:var(--line);padding:8px;border-radius:10px"><b style="color:${r.c}">${r.n} · szansa ${od[i]}% · wartość od 🪙${fmt(r.v)}</b><div style="display:flex;gap:6px;margin:6px 0">${SKINS.slice(1)
+    h += `<div style="background:var(--line);padding:8px;border-radius:10px"><b style="color:${r.c}">${t('cont.line', {
+      name: t(`rar.${i}`),
+      od: od[i],
+      v: numF(r.v),
+    })}</b><div style="display:flex;gap:6px;margin:6px 0">${SKINS.slice(1)
       .map(
         (k) =>
-          `<div title="${k.name}" style="width:34px;height:34px;color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;${stFor(k, 2, i)}">${skSym(k, 2)}</div>`,
+          `<div title="${t(`skin.${k.id}`)}" style="width:34px;height:34px;color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;${stFor(k, 2, i)}">${skSym(k, 2)}</div>`,
       )
-      .join('')}</div><div style="font-size:11px">Liczba mocy: ${PCOUNT[i]}<br>Jakość mocy: ${QW[i]
-      .map((p, q) => `<span style="color:${RAR[q].c}">${RAR[q].n} ${p}%</span>`)
-      .join(' · ')}</div></div>`;
+      .join('')}</div><div style="font-size:11px">${t('cont.perkCount', { n: PCOUNT[i] })}<br>${t('cont.perkQuality', {
+        qws: QW[i]
+          .map((p, q) => `<span style="color:${RAR[q].c}">${t(`rar.${q}`)} ${p}%</span>`)
+          .join(' · '),
+      })}</div></div>`;
   });
-  h += `<div style="background:var(--line);padding:8px;border-radius:10px;font-size:11px"><b style="font-size:13px">Możliwe moce</b>${(
+  h += `<div style="background:var(--line);padding:8px;border-radius:10px;font-size:11px"><b style="font-size:13px">${t('cont.perksTitle')}</b>${(
     Object.keys(PERK) as Array<keyof typeof PERK>
   )
     .map(
-      (t) =>
-        `<div style="margin-top:4px">${PERK[t].ic} ${PERK[t].n}: ${PERK[t].v.map(
-          (v, q) => `<span style="color:${RAR[q].c}">+${v}${PERK[t].u}</span>`,
-        ).join(' / ')}</div>`,
+      (type) =>
+        `<div style="margin-top:4px">${t('cont.perkLine', {
+          icon: PERK[type].ic,
+          name: t(`perk.${type}`),
+          values: PERK[type].v
+            .map((v, q) => `<span style="color:${RAR[q].c}">+${v}${perkUnit(type)}</span>`)
+            .join(' / '),
+        })}</div>`,
     )
     .join('')}</div>`;
   $('scBody').innerHTML = h;
@@ -245,46 +289,46 @@ export function renderContBody(): void {
 
 // ---- war screen (legacy lines 211–230) ----
 
-// The battle log and both army rows render on the canvas (Phase 4 WarScene);
-// the shell around them (#wInfo, buttons, help) stays DOM — the i18n surface.
-export function wLog(t: string): void {
-  warLog(t);
-}
-
-// ---- multiplayer screen (legacy dbg / mpMsg, lines 377–378) ----
-
-export function mpDbg(t: string): void {
-  const l = $('mpLog');
-  l.textContent += `[${new Date().toLocaleTimeString()}] ${t}\n`;
-  l.scrollTop = l.scrollHeight;
-}
-
-export function mpMsg(t: string): void {
-  $('mpMsg').textContent = t;
-  mpDbg(t);
-}
-
 const WAR_UPGRADES: Array<[string, string, WarPowerKey]> = [
-  ['pFire', '🔥 Podpalenie', 'fire'],
-  ['pSlow', '❄ Spowolnienie', 'slow'],
-  ['pWeak', '☠ Osłabienie', 'weak'],
+  ['pFire', 'war.power.fire', 'fire'],
+  ['pSlow', 'war.power.slow', 'slow'],
+  ['pWeak', 'war.power.weak', 'weak'],
 ];
 
 export function renderWar(s: GameState, fight: Fight | null, mpOn: boolean): void {
-  $('wInfo').textContent = `⭐ Poziom konta ${accLvl(s)} · Wygrane: ${s.war.wave - 1} · 🪙${s.coins}`;
+  $('wInfo').textContent = t('war.info', { l: accLvl(s), w: s.war.wave - 1, coins: s.coins });
   warRender(s, fight); // army rows (#eRow/#pRow) on the canvas (Phase 4)
   const live = !!(fight && fight.run && !fight.over);
-  btn('wGo').textContent = !fight ? 'Odśwież' : fight.over ? 'Dalej' : live ? 'Walka trwa…' : 'Walka!';
+  btn('wGo').textContent = !fight
+    ? t('war.refresh')
+    : fight.over
+      ? t('war.next')
+      : live
+        ? t('war.fighting')
+        : t('war.fight');
   btn('wGo').disabled = live;
-  WAR_UPGRADES.forEach(([id, n, k]) => {
-    btn(id).textContent = `${n} ${s.war[k]} 🪙${wcost(s.war[k])}`;
+  WAR_UPGRADES.forEach(([id, key, k]) => {
+    btn(id).textContent = `${t(key)} ${s.war[k]} 🪙${wcost(s.war[k])}`;
     btn(id).disabled = live || s.coins < wcost(s.war[k]);
   });
   if (mpOn) {
-    btn('wGo').textContent = fight && fight.over ? 'Zakończ' : 'Walka PvP…';
+    btn('wGo').textContent = fight && fight.over ? t('war.finish') : t('war.pvp');
     btn('wGo').disabled = !(fight && fight.over);
     (btn('pFire').parentElement as HTMLElement).style.display = 'none';
   } else {
     (btn('pFire').parentElement as HTMLElement).style.display = '';
   }
+}
+
+// ---- multiplayer screen (legacy dbg / mpMsg, lines 377–378) ----
+
+export function mpDbg(text: string): void {
+  const l = $('mpLog');
+  l.textContent += `[${new Date().toLocaleTimeString()}] ${text}\n`;
+  l.scrollTop = l.scrollHeight;
+}
+
+export function mpMsg(text: string): void {
+  $('mpMsg').textContent = text;
+  mpDbg(text);
 }

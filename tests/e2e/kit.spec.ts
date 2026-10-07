@@ -189,6 +189,50 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   expect(errors).toEqual([]);
 });
 
+test('en locale: English chrome, canvas log, layout fits at 360 px', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 360, height: 640 });
+  await seedSave(page);
+  await page.goto('/?lang=en'); // mock getLanguage() honors the ?lang override
+  await page.waitForFunction(() => globalThis.__platform?.ready === true);
+
+  // <html lang> and document.title follow the locale; the static data-i18n
+  // sweep already translated the hint line before the first interaction.
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(await page.title()).toBe('Kopalnia');
+  await expect(page.locator('#msg')).toHaveText(
+    'Tap an item, then another of the same kind, to merge them.',
+  );
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'War of Balls' })).toBeVisible();
+
+  // EN expansion at 360 px: the column and every visible button/input fit.
+  const fit = await page.evaluate(() => {
+    const app = document.getElementById('app')!;
+    const over = [...document.querySelectorAll<HTMLElement>('button, input')]
+      .filter((el) => el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => el.id || el.textContent || '?');
+    return { app: app.scrollWidth - app.clientWidth, over };
+  });
+  expect(fit.app).toBeLessThanOrEqual(0);
+  expect(fit.over).toEqual([]);
+
+  // Dynamic HUD chrome renders through t() too.
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('#spawn')).toContainText('New (lvl');
+
+  // The war screen draws t() at render time — on the canvas.
+  await page.locator('#menuBtn').click();
+  await page.getByRole('button', { name: 'War of Balls' }).click();
+  const warLog = async (): Promise<string> => (await page.evaluate(() => globalThis.__warLog)) ?? '';
+  await expect.poll(warLog).toContain('Enemy level');
+  await expect(page.locator('#wInfo')).toContainText('Account level');
+  await expect(page.locator('#pSlow')).toContainText('Slowdown');
+  await page.getByRole('button', { name: 'Back to menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('multiplayer: screen opens with army info and returns to menu', async ({ page }) => {
   const errors = collectErrors(page);
   await seedSave(page); // the fixture brings 5 fighting balls

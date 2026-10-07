@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   applyStatic,
@@ -163,5 +165,68 @@ describe('locale files', () => {
       // renders bare numbers, so every category must be the same string.
       expect(new Set(Object.values(msg)).size, key).toBe(1);
     }
+  });
+});
+
+describe('index.html extraction (mechanical byte parity)', () => {
+  // The static markup keeps the original legacy text as its inline default —
+  // so comparing it against pl.json pins the extraction for every static
+  // string (emoji, ± signs, ellipses included) without hand-copied pins.
+  const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8');
+  const plv = pl as Record<string, unknown>;
+  const value = (key: string): string => {
+    const v = plv[key];
+    if (typeof v === 'string') return v;
+    if (v && typeof v === 'object') {
+      const variants = Object.values(v as Record<string, string>);
+      expect(new Set(variants).size, key).toBe(1); // pl variants are identical
+      return variants[0];
+    }
+    throw new Error(`missing pl key: ${key}`);
+  };
+
+  it('data-i18n textContent matches pl.json', () => {
+    const pairs = [...html.matchAll(/data-i18n="([^"]+)"[^>]*>([^<]*)</g)].map((m) => [
+      m[1],
+      m[2].trim(),
+    ]);
+    expect(pairs.length).toBeGreaterThan(15); // the sweep actually found the markup
+    for (const [key, text] of pairs) expect(text, key).toBe(value(key));
+  });
+
+  it('data-i18n-aria and data-i18n-ph match pl.json', () => {
+    for (const m of html.matchAll(/data-i18n-aria="([^"]+)"[^>]*aria-label="([^"]*)"/g)) {
+      expect(m[2], m[1]).toBe(value(m[1]));
+    }
+    for (const m of html.matchAll(/data-i18n-ph="([^"]+)"[^>]*placeholder="([^"]*)"/g)) {
+      expect(m[2], m[1]).toBe(value(m[1]));
+    }
+  });
+});
+
+describe('dynamic strings: exact legacy bytes (spot pins)', () => {
+  it('HUD lines render byte-identically in pl', () => {
+    expect(t('snd.on')).toBe('Dźwięk: włączony');
+    expect(t('snd.off')).toBe('Dźwięk: wyłączony');
+    expect(t('luck.2')).toBe('Kop, kulko, kop! ⛏️');
+    expect(t('hud.discount', { p: 8, c: 384 })).toBe('🏷 Zniżka −8% 🪙384'); // U+2212 minus
+    expect(t('hud.ren', { r: 60, c: 147 })).toBe('Auto-powrót 60% 🪙147');
+    expect(t('hud.spawn', { l: 4, p: 60 })).toBe('Nowy (poz. 4) 🪙60');
+    expect(t('inv.chip', { l: 3, p: 7, n: 2 })).toBe('poz. 3 (7) ×2');
+    expect(t('stats.info', { l: 1, p: 0 })).toBe('Poziom 1 · wolne punkty: 0');
+    expect(t('war.info', { l: 5, w: 2, coins: 4820 })).toBe(
+      '⭐ Poziom konta 5 · Wygrane: 2 · 🪙4820',
+    );
+    expect(t('levelup.title', { l: 3 }) + t('levelup.crate')).toBe(
+      '⭐ Awans! Poziom konta 3 · 🎁 Skrzynka!',
+    );
+    expect(t('crate.result', { l: 7, p: 127, where: t('crate.whereBoard') })).toBe(
+      'Wylosowano kulkę poz. 7 (siła 127) — trafiła na planszę!',
+    );
+    expect(t('mp.infoArmy', { n: 5 })).toBe(
+      'Do walki idzie twoich 5 najsilniejszych kulek (maks. 5). Przegrana nie odbiera kulek.',
+    );
+    expect(t('war.win', { coins: 225, xp: 90 })).toBe('Zwycięstwo! +🪙225, +90 XP. Kliknij Dalej.');
+    expect(t('war.loseBall', { L: 4 })).toBe('Porażka! Tracisz kulkę poz. 4. (+🪙15)');
   });
 });

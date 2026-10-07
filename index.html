@@ -7,11 +7,11 @@
 </head>
 <body>
   <div id="app">
-    <div class="top"><span>🪙 <span id="coins">0</span></span><span>Głęb.: <span id="depth">0</span> m</span><span>⭐<span id="acc">1</span></span><button id="menuBtn" aria-label="Menu" style="padding:2px 12px;background:#7a5a9e;border-radius:14px">☰</button></div>
+    <div class="top"><span>🪙 <span id="coins">0</span></span><span id="depthRow"></span><span>⭐<span id="acc">1</span></span><button id="menuBtn" data-i18n-aria="menu.label" aria-label="Menu" style="padding:2px 12px;background:#7a5a9e;border-radius:14px">☰</button></div>
     <!-- Board spacers (Phase 3): canvas-drawn by MineScene — transparent,
          click-through; height/geometry maintained by src/style.css + the scene. -->
     <div id="grid"></div>
-    <div id="inv" aria-label="Ekwipunek"></div>
+    <div id="inv" data-i18n-aria="inv.label" aria-label="Ekwipunek"></div>
     <div class="row">
       <button id="spawn"></button>
       <button id="up"></button>
@@ -32,29 +32,29 @@
     <button id="sell" style="background:#8a6d1c"></button>
     <button id="crate" style="background:#d9a21f;display:none"></button>
     <button id="drop">RZUĆ!</button>
-    <div id="msg">Dotknij przedmiot, potem taki sam, by je połączyć.</div>
+    <div id="msg" data-i18n="hud.hint">Dotknij przedmiot, potem taki sam, by je połączyć.</div>
     <div id="mine"></div>
   </div>
   <div id="menu"><div class="mbox">
-   <h1>Łącz i kop</h1>
-   <p style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
+   <h1 data-i18n="menu.title">Łącz i kop</h1>
+   <p data-i18n="menu.tagline" style="text-align:center">Łącz kulki, zrzucaj je i drąż coraz głębiej.</p>
    <button id="play" style="background:#27b36a;font-size:22px;padding:16px"></button>
-   <button id="warBtn" style="background:#d98a1f;font-size:20px">⚔ Wojna kulek</button>
-   <button id="statsBtn" style="background:#c24a8a">⭐ Statystyki</button>
-   <button id="shopBtn" style="background:#2a9bb5">🛍 Sklep ze skinami</button>
+   <button id="warBtn" data-i18n="war.title" style="background:#d98a1f;font-size:20px">⚔ Wojna kulek</button>
+   <button id="statsBtn" data-i18n="stats.title" style="background:#c24a8a">⭐ Statystyki</button>
+   <button id="shopBtn" data-i18n="shop.title" style="background:#2a9bb5">🛍 Sklep ze skinami</button>
    <!-- Hidden on YT builds at runtime (legacy IN_PLAY): Playables CSP forbids the MQTT servers. -->
-   <button id="mpBtn" style="background:#2f8f5a">🌐 Multiplayer</button>
-   <button id="how" style="background:var(--btn)">Jak grać</button>
+   <button id="mpBtn" data-i18n="mp.title" style="background:#2f8f5a">🌐 Multiplayer</button>
+   <button id="how" data-i18n="menu.how" style="background:var(--btn)">Jak grać</button>
    <div id="rules">
-    <p>Dotknij kulkę, potem drugą o tym samym poziomie, by je połączyć. Wyższy poziom to większa siła.</p>
-    <p>RZUĆ! zrzuca kulki na bloki. Zniszczone bloki dają monety. Kolor bloku zależy od jego życia.</p>
-    <p>Za monety kupisz nowe kulki, ulepszenia, wybuchy i bomby. Kulki możesz też sprzedać. Postęp zapisuje się sam.</p>
+    <p data-i18n="menu.rule1">Dotknij kulkę, potem drugą o tym samym poziomie, by je połączyć. Wyższy poziom to większa siła.</p>
+    <p data-i18n="menu.rule2">RZUĆ! zrzuca kulki na bloki. Zniszczone bloki dają monety. Kolor bloku zależy od jego życia.</p>
+    <p data-i18n="menu.rule3">Za monety kupisz nowe kulki, ulepszenia, wybuchy i bomby. Kulki możesz też sprzedać. Postęp zapisuje się sam.</p>
    </div>
    <button id="snd" style="background:#7a5a9e"></button>
-   <button id="wipe" style="background:#b8202f">Resetuj postęp</button>
+   <button id="wipe" data-i18n="menu.reset" style="background:#b8202f">Resetuj postęp</button>
   </div></div>
   <div id="war" class="hide"><div class="mbox" style="max-width:380px;margin:auto">
-   <h1 style="font-size:28px">⚔ Wojna kulek</h1>
+   <h1 data-i18n="war.title" style="font-size:28px">⚔ Wojna kulek</h1>
    <div id="wInfo" style="font-weight:700"></div>
    <div id="eRow" class="wrow"></div>
    <div id="wLog"></div>
@@ -65,61 +65,61 @@
     <button id="pSlow" style="flex:1;background:#2a9bb5;font-size:12px"></button>
     <button id="pWeak" style="flex:1;background:#6a4bd0;font-size:12px"></button>
    </div>
-   <p style="font-size:12px">🔥 podpala wrogów (obrażenia z czasem) · ❄ spowalnia ich ataki · ☠ po zniszczeniu wroga osłabia pozostałych. Do walki idzie 5 twoich najsilniejszych kulek z planszy i ekwipunku. Za porażkę masz 50% szans na utratę jednej losowej kulki z walczących. Przeciwnik jest losowany w granicach ±3 poziomów od twojego poziomu konta (⭐ rośnie z kopania i wygranych).</p>
-   <button id="wBack" style="background:#7a5a9e">Wróć do menu</button>
+   <p data-i18n="war.help" style="font-size:12px">🔥 podpala wrogów (obrażenia z czasem) · ❄ spowalnia ich ataki · ☠ po zniszczeniu wroga osłabia pozostałych. Do walki idzie 5 twoich najsilniejszych kulek z planszy i ekwipunku. Za porażkę masz 50% szans na utratę jednej losowej kulki z walczących. Przeciwnik jest losowany w granicach ±3 poziomów od twojego poziomu konta (⭐ rośnie z kopania i wygranych).</p>
+   <button id="wBack" data-i18n="common.backToMenu" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="mp" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:26px">🌐 Multiplayer</h1>
+   <h1 data-i18n="mp.title" style="font-size:26px">🌐 Multiplayer</h1>
    <div id="mpInfo" style="font-size:13px"></div>
-   <button id="mpFind" style="background:#27b36a">🔍 Szukaj losowego przeciwnika</button>
-   <button id="mpHost" style="background:#d98a1f">🔑 Utwórz pojedynek (kod)</button>
-   <div class="row"><input id="mpCode" maxlength="5" placeholder="KOD" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-weight:800;text-transform:uppercase;text-align:center;border-radius:12px;border:0;padding:10px"><button id="mpJoin" style="background:var(--btn)">Dołącz</button></div>
+   <button id="mpFind" data-i18n="mp.find" style="background:#27b36a">🔍 Szukaj losowego przeciwnika</button>
+   <button id="mpHost" data-i18n="mp.host" style="background:#d98a1f">🔑 Utwórz pojedynek (kod)</button>
+   <div class="row"><input id="mpCode" maxlength="5" data-i18n-ph="mp.codePlaceholder" placeholder="KOD" autocomplete="off" style="flex:1;min-width:0;font:inherit;font-weight:800;text-transform:uppercase;text-align:center;border-radius:12px;border:0;padding:10px"><button id="mpJoin" data-i18n="mp.join" style="background:var(--btn)">Dołącz</button></div>
    <div id="mpMsg" style="min-height:40px;font-weight:700"></div>
    <div id="mpLog" style="font-size:11px;text-align:left;opacity:.85;max-height:130px;overflow:auto;white-space:pre-wrap"></div>
-   <button id="mpBack" style="background:#7a5a9e">Wróć do menu</button>
+   <button id="mpBack" data-i18n="common.backToMenu" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="stats" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:28px">⭐ Statystyki</h1>
+   <h1 data-i18n="stats.title" style="font-size:28px">⭐ Statystyki</h1>
    <div id="sInfo" style="font-weight:700"></div>
    <div id="sList" style="display:flex;flex-direction:column;gap:8px"></div>
-   <p style="font-size:12px">Za każdy poziom konta dostajesz 1 punkt. Im wyższy poziom, tym jednak twardsze bloki w kopalni (+5% życia na poziom), więc punkty pomagają dotrzymać kroku, a nie przejść grę.</p>
+   <p data-i18n="stats.help" style="font-size:12px">Za każdy poziom konta dostajesz 1 punkt. Im wyższy poziom, tym jednak twardsze bloki w kopalni (+5% życia na poziom), więc punkty pomagają dotrzymać kroku, a nie przejść grę.</p>
    <button id="sReset" style="background:#d9a21f"></button>
-   <button id="sBack" style="background:#7a5a9e">Wróć do menu</button>
+   <button id="sBack" data-i18n="common.backToMenu" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="crateov" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:28px">🎁 Skrzynka</h1>
+   <h1 data-i18n="crate.title" style="font-size:28px">🎁 Skrzynka</h1>
    <div id="cInfo" style="font-weight:700"></div>
    <div id="cview"><div id="cmark"></div><div id="cstrip"></div></div>
    <div id="cRes" style="min-height:22px;font-weight:700"></div>
-   <button id="cOpen" style="background:#d9a21f;font-size:20px">Otwórz skrzynkę</button>
-   <button id="cClose" style="background:#7a5a9e">Zamknij</button>
+   <button id="cOpen" data-i18n="crate.open" style="background:#d9a21f;font-size:20px">Otwórz skrzynkę</button>
+   <button id="cClose" data-i18n="common.close" style="background:#7a5a9e">Zamknij</button>
   </div></div>
   <div id="shop" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:28px">🛍 Sklep ze skinami</h1>
+   <h1 data-i18n="shop.title" style="font-size:28px">🛍 Sklep ze skinami</h1>
    <div id="shInfo" style="font-weight:700"></div>
    <div id="shList" style="display:flex;flex-direction:column;gap:8px"></div>
    <button id="shInv" style="background:#c24a8a"></button>
-   <button id="shBack" style="background:#7a5a9e">Wróć do menu</button>
+   <button id="shBack" data-i18n="common.backToMenu" style="background:#7a5a9e">Wróć do menu</button>
   </div></div>
   <div id="sspin" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:26px" id="sTitle">Skrzynia</h1>
+   <h1 data-i18n="spin.title" style="font-size:26px" id="sTitle">Skrzynia</h1>
    <div id="sInfo" style="font-weight:700;font-size:13px"></div>
    <div id="sview"><div id="smark"></div><div id="sstrip"></div></div>
    <div id="sRes" style="min-height:66px;font-weight:700"></div>
    <button id="sOpen" style="background:#d9a21f;font-size:20px"></button>
-   <button id="sCont" style="background:#2a9bb5">🔍 Co może wypaść</button>
-   <button id="sClose" style="background:#7a5a9e">Wróć do sklepu</button>
+   <button id="sCont" data-i18n="shop.preview" style="background:#2a9bb5">🔍 Co może wypaść</button>
+   <button id="sClose" data-i18n="common.backToShop" style="background:#7a5a9e">Wróć do sklepu</button>
   </div></div>
   <div id="scont" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:26px">🔍 Zawartość skrzynki</h1>
+   <h1 data-i18n="cont.title" style="font-size:26px">🔍 Zawartość skrzynki</h1>
    <div id="scBody" style="text-align:left;display:flex;flex-direction:column;gap:8px"></div>
-   <button id="scBack" style="background:#7a5a9e">Wróć</button>
+   <button id="scBack" data-i18n="common.back" style="background:#7a5a9e">Wróć</button>
   </div></div>
   <div id="sinv" class="hide"><div class="mbox" style="margin:auto">
-   <h1 style="font-size:26px">🎒 Ekwipunek skinów</h1>
+   <h1 data-i18n="skinsInv.title" style="font-size:26px">🎒 Ekwipunek skinów</h1>
    <div id="siInfo" style="font-weight:700"></div>
    <div id="siList" style="display:flex;flex-direction:column;gap:8px"></div>
-   <button id="siBack" style="background:#7a5a9e">Wróć do sklepu</button>
+   <button id="siBack" data-i18n="common.backToShop" style="background:#7a5a9e">Wróć do sklepu</button>
   </div></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

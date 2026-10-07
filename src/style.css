@@ -43,6 +43,18 @@ body {
   z-index: 2;
 }
 
+/* Phase 4: while the war screen is open, the opaque #war overlay
+   (background:var(--bg), z-index 10) would hide the canvas — so the canvas
+   rises ABOVE it and drops its pointer events: the war view needs zero
+   canvas input (it draws only) and every click must keep reaching the DOM
+   buttons underneath. #app creates no stacking context (position:relative,
+   z-index auto), so the canvas competes at the root level — the same trick
+   as .board-top above, one state higher. */
+#app.canvas-top canvas {
+  z-index: 20;
+  pointer-events: none;
+}
+
 /* Board spacers: #grid keeps legacy geometry (5 square cells + equal gaps ⇒
    exactly square at any width); #mine's height is written by MineScene from
    viewRows() so the canvas knows where the board ends. The #app prefix is
@@ -55,6 +67,17 @@ body {
 }
 
 #app #mine {
+  background: transparent;
+  pointer-events: none;
+}
+
+/* War-view spacers (Phase 4): #eRow/#wLog/#pRow are transparent layout
+   boxes measured (and height-written) by WarScene — the army rows and the
+   battle log are canvas-drawn while #app.canvas-top is active above. The
+   #app #war prefix again out-specifies legacy/style.css (loaded later). */
+#app #war #eRow,
+#app #war #wLog,
+#app #war #pRow {
   background: transparent;
   pointer-events: none;
 }

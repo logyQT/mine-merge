@@ -11,12 +11,11 @@
 
 import { N } from './config';
 import { isMuted, setAudioGate, setMuted, sfx, warmAudio } from './audio/sfx';
-import { crateRoll, CRATES, itName, itVal, ownedMax, perk, RAR, rollPerks, rollRar, rollTheme, rnd5, type CrateDef } from './core/cosmetics';
+import { crateRoll, CRATES, itVal, ownedMax, perk, RAR, rollPerks, rollRar, rollTheme, rnd5, type CrateDef } from './core/cosmetics';
 import {
   accLvl,
   addXp,
   disCost,
-  fmt,
   incMul,
   pasCost,
   pts,
@@ -40,13 +39,16 @@ import {
 } from './core/state';
 import { createNet, type Net } from './mp';
 import { prepareFight, tick, wcost, wEnd, armyList, mk, type Fight, type Power } from './core/war';
+import { applyStatic, getLocale, numF, onLocaleChange, resolveLanguage, setLocale, t, type TParams } from './i18n';
 import type { Platform } from './platform/types';
 import { flyBall, renderMine, type Handlers, type Ui } from './ui/board';
 import { $, btn, luckMsg, msg, render, setGone, updSnd } from './ui/hud';
+import { setWarOpen, warLog } from './ui/war-canvas';
 import {
   cellHtml,
   CW,
   hide,
+  nameOf,
   perkHtml,
   renderContBody,
   renderCrate,
@@ -62,7 +64,6 @@ import {
   stripWin,
   mpDbg,
   mpMsg,
-  wLog,
 } from './ui/game-view';
 
 // ---- module state (legacy globals: transient UI + timers) ----
@@ -125,7 +126,7 @@ function refresh(): void {
 function announceLevelUp(up: LevelUp | null): void {
   if (up) {
     setTimeout(() => {
-      msg(`⭐ Awans! Poziom konta ${up.level}` + (up.crates ? ' · 🎁 Skrzynka!' : ''));
+      msg(t('levelup.title', { l: up.level }) + (up.crates ? t('levelup.crate') : ''));
       sfx.up();
     }, 60);
   }
@@ -157,7 +158,7 @@ function tap(i: number): void {
     state.grid[sel] = 0;
     sel = null;
     sfx.merge(state.grid[i]);
-    msg(`Połączono! Poziom ${state.grid[i]}`);
+    msg(t('msg.merged', { n: state.grid[i] }));
   } else {
     sel = i;
   }
@@ -168,7 +169,7 @@ function take(L: number): void {
   if (busy) return;
   const e = state.grid.indexOf(0);
   if (e < 0) {
-    msg('Plansza pełna — połącz przedmioty.');
+    msg(t('msg.boardFull'));
     return;
   }
   state.grid[e] = L;
@@ -193,7 +194,7 @@ function bindControls(): void {
     sfx.up();
     state.spawnLvl += 1;
     state.upCost = Math.round(state.upCost * 2.6);
-    msg(`Nowe kulki startują od poz. ${state.spawnLvl}, ale kosztują już 🪙${spawnPrice(state)}`);
+    msg(t('msg.spawnLevel', { l: state.spawnLvl, p: spawnPrice(state) }));
     refresh();
   };
   btn('inc').onclick = () => {
@@ -202,7 +203,7 @@ function bindControls(): void {
     sfx.up();
     state.incLvl += 1;
     state.incCost = Math.round(state.incCost * 2.2);
-    msg(`Zarobki ×${incMul(state, rng).toFixed(1)}`);
+    msg(t('msg.income', { m: incMul(state, rng).toFixed(1) }));
     refresh();
   };
   btn('ren').onclick = () => {
@@ -211,7 +212,7 @@ function bindControls(): void {
     sfx.up();
     state.renLvl += 1;
     state.renCost = Math.round(state.renCost * 2.1);
-    msg(`Szansa odnowy: ${Math.round(renChance(state) * 100)}%`);
+    msg(t('msg.renew', { p: Math.round(renChance(state) * 100) }));
     refresh();
   };
   btn('pas').onclick = () => {
@@ -220,7 +221,7 @@ function bindControls(): void {
     state.coins -= c;
     state.econ.pas += 1;
     sfx.up();
-    msg(`Pasywny dochód: +${state.econ.pas} monet co 2 sekundy`);
+    msg(t('msg.passive', { n: state.econ.pas }));
     refresh();
   };
   btn('dis').onclick = () => {
@@ -229,7 +230,7 @@ function bindControls(): void {
     state.coins -= c;
     state.econ.dis += 1;
     sfx.up();
-    msg(`Nowe kulki kosztują teraz 🪙${spawnPrice(state)}`);
+    msg(t('msg.discount', { p: spawnPrice(state) }));
     refresh();
   };
   btn('blast').onclick = () => {
@@ -238,7 +239,7 @@ function bindControls(): void {
     sfx.up();
     state.blastLvl += 1;
     state.blastCost = Math.round(state.blastCost * 2.3);
-    msg('Upadające kulki wybuchają po bokach i w dół!');
+    msg(t('msg.blast'));
     refresh();
   };
   btn('buyb').onclick = () => {
@@ -258,7 +259,7 @@ function bindControls(): void {
     state.coins += e;
     gainXp(e);
     advanceTopRow(state, rng);
-    msg(`💣 BUM! Trzy górne rzędy osłabione o połowę: +🪙${e}`);
+    msg(t('msg.bomb', { e }));
     refresh();
   };
   btn('sell').onclick = () => {
@@ -268,7 +269,7 @@ function bindControls(): void {
     sfx.coin();
     state.grid[sel] = 0;
     sel = null;
-    msg(`Sprzedano za 🪙${p}`);
+    msg(t('msg.sold', { p }));
     refresh();
   };
   // #crate (level-up reward) gets its handler with the crate screen slice.
@@ -325,10 +326,10 @@ function bindDrop(): void {
     state.coins += earned;
     busy = false;
     setGone(false);
-    msg(`Zdobyto 🪙${earned}. Na planszę wróciło ${back.length}, do ekwipunku ${nInv}.`);
+    msg(t('hud.dropResult', { coins: earned, back: back.length, inv: nInv }));
     if (state.coins < spawnPrice(state) && state.grid.every((x) => !x)) {
       state.coins = spawnPrice(state);
-      msg('Dostajesz zapasowe monety, kop dalej!');
+      msg(t('msg.refill'));
     }
     refresh();
   };
@@ -339,7 +340,7 @@ function bindDrop(): void {
 function passiveTick(): void {
   if (paused || state.econ.pas < 1) return;
   state.coins += Math.round(state.econ.pas * (1 + 0.05 * (accLvl(state) - 1)));
-  $('coins').textContent = fmt(state.coins);
+  $('coins').textContent = numF(state.coins);
 }
 
 function startPassive(): void {
@@ -366,16 +367,22 @@ const hasProgress = (): boolean =>
   state.war.wave > 1 ||
   state.acc.xp > 0;
 
+/** Menu button labels (also re-run on locale switches). */
+function updateMenuLabels(): void {
+  btn('statsBtn').textContent =
+    t('stats.title') + (pts(state) > 0 ? t('menu.statsPoints', { n: pts(state) }) : '');
+  btn('play').textContent = hasProgress() ? t('menu.continue') : t('menu.play');
+}
+
 function openMenu(): void {
-  btn('statsBtn').textContent = '⭐ Statystyki' + (pts(state) > 0 ? ` (${pts(state)} pkt)` : '');
-  btn('play').textContent = hasProgress() ? 'Kontynuuj' : 'Graj';
+  updateMenuLabels();
   $('menu').classList.remove('hide');
   btn('play').focus();
 }
 
 function armWipe(on: boolean): void {
   if (wipeT !== null) clearTimeout(wipeT);
-  btn('wipe').textContent = on ? 'Na pewno? Kliknij jeszcze raz' : 'Resetuj postęp';
+  btn('wipe').textContent = on ? t('menu.resetConfirm') : t('menu.reset');
   if (on) wipeT = setTimeout(() => armWipe(false), 4000);
   btn('wipe').dataset.armed = on ? '1' : '';
 }
@@ -413,9 +420,9 @@ function bindMenu(): void {
     busy = false;
     platform.sendScore(0);
     flushSave(); // legacy removed the save key, then render() re-saved defaults
-    msg('Postęp wyzerowany. Zaczynasz od nowa!');
+    msg(t('msg.wiped'));
     refresh();
-    btn('play').textContent = 'Graj';
+    btn('play').textContent = t('menu.play');
   };
 }
 
@@ -487,7 +494,7 @@ function bindCrate(): void {
     const arr = Array.from({ length: N }, () => crateRoll(m, rng));
     arr[WI] = win;
     stripReset($('cstrip'), arr.map((L) => cellHtml(state, L)).join(''));
-    $('cRes').textContent = 'Losowanie…';
+    $('cRes').textContent = t('common.rolling');
     renderCrate(state, spinning);
     const jit = (rng() - 0.5) * 40;
     stripSpinTo($('cstrip'), $('cview'), WI, CW, jit);
@@ -500,12 +507,12 @@ function bindCrate(): void {
       let where: string;
       if (e >= 0) {
         state.grid[e] = win;
-        where = 'na planszę';
+        where = t('crate.whereBoard');
       } else {
         state.inv[win] = (state.inv[win] || 0) + 1;
-        where = 'do ekwipunku';
+        where = t('crate.whereInv');
       }
-      $('cRes').textContent = `Wylosowano kulkę poz. ${win} (siła ${fmt(pw(win))}) — trafiła ${where}!`;
+      $('cRes').textContent = t('crate.result', { l: win, p: numF(pw(win)), where });
       requestSave(); // legacy save()
       renderCrate(state, spinning);
     }, 4400);
@@ -537,7 +544,7 @@ function openSpin(ci: number): void {
   warmAudio();
   hide('shop');
   show('sspin');
-  $('sTitle').textContent = '📦 ' + crate.name;
+  $('sTitle').textContent = '📦 ' + t(`crate.name.${CRATES.indexOf(crate)}`);
   $('sRes').textContent = '';
   const cells = Array.from(
     { length: 12 },
@@ -624,7 +631,7 @@ function bindShop(): void {
       i === WI ? skCell(th, rar, L0) : skCell(rollTheme(rng), rollRar(od, rng), rnd5(rng)),
     );
     stripReset($('sstrip'), arr.join(''));
-    $('sRes').textContent = 'Losowanie…';
+    $('sRes').textContent = t('common.rolling');
     renderSpinView();
     const jit = (rng() - 0.5) * 40;
     stripSpinTo($('sstrip'), $('sview'), WI, CW, jit);
@@ -635,7 +642,7 @@ function bindShop(): void {
       sfx.merge(2 + rar * 3);
       const it: SkinItem = { id: state.skins.nid++, theme: th.id, rar, perks: rollPerks(rar, rng) };
       state.skins.items.push(it);
-      $('sRes').innerHTML = `<span style="color:${RAR[rar].c}">${itName(it)}</span><br><span style="font-size:12px">${perkHtml(it, rng)}</span><br>Wartość: 🪙${fmt(itVal(it, rng))} — dodano do ekwipunku skinów`;
+      $('sRes').innerHTML = `<span style="color:${RAR[rar].c}">${nameOf(it)}</span><br><span style="font-size:12px">${perkHtml(it, rng)}</span><br>${t('spin.added', { v: numF(itVal(it, rng)) })}`;
       requestSave(); // legacy save()
       renderSpinView();
     }, 4400);
@@ -647,6 +654,19 @@ function bindShop(): void {
 let fight: Fight | null = null;
 let wTimer: ReturnType<typeof setInterval> | null = null;
 let warWasRunning = false;
+
+// The war log renders on the canvas; keep the current key+params so a
+// locale switch can re-render the line (Phase 4: canvas draws t() at
+// render time). Core still returns its own Polish message — unused here
+// (view-side composition, core/war.ts untouched).
+let logKey: string | null = null;
+let logParams: TParams | undefined;
+
+function wLogKey(key: string, params?: TParams): void {
+  logKey = key;
+  logParams = params;
+  warLog(t(key, params));
+}
 
 function stopWarTimer(): void {
   if (wTimer !== null) {
@@ -682,7 +702,9 @@ function endFight(win: boolean): void {
   const r = wEnd(state, fight, win, rng);
   if (win) sfx.coin();
   announceLevelUp(r.levelUp);
-  wLog(r.message);
+  if (win) wLogKey('war.win', { coins: r.coins, xp: r.xp });
+  else if (r.lostLvl !== undefined) wLogKey('war.loseBall', { L: r.lostLvl });
+  else wLogKey('war.loseSafe');
   requestSave(); // legacy save()
   renderWarView();
 }
@@ -691,7 +713,11 @@ function prepareWar(): void {
   stopWarTimer(); // legacy prepare(): clearInterval(wTimer)
   const p = prepareFight(state, rng);
   fight = p.fight;
-  wLog(p.message);
+  if (p.fight) {
+    wLogKey('war.prepare', { eL: p.fight.eLvl, n: p.fight.e.length, pN: p.fight.p.length });
+  } else {
+    wLogKey('war.prepare.empty');
+  }
   renderWarView();
 }
 
@@ -701,6 +727,7 @@ function bindWar(): void {
     sfx.click();
     hide('menu');
     show('war');
+    setWarOpen(true); // canvas above the overlay before the first draw
     prepareWar();
   };
   btn('wGo').onclick = () => {
@@ -714,7 +741,7 @@ function bindWar(): void {
     }
     if (!fight.run) {
       fight.run = true;
-      wLog('Bitwa!');
+      wLogKey('war.bitwa');
       startTicker();
       renderWarView();
     }
@@ -740,6 +767,7 @@ function bindWar(): void {
     stopWarTimer();
     fight = null;
     hide('war');
+    setWarOpen(false); // hand the canvas back to the board first
     refresh();
     openMenu();
   };
@@ -788,6 +816,7 @@ function mpLeave(): void {
   stopWarTimer();
   fight = null;
   hide('war');
+  setWarOpen(false);
   refresh();
   openMenu();
 }
@@ -795,13 +824,13 @@ function mpLeave(): void {
 async function mpPrep(): Promise<boolean> {
   $('mpLog').textContent = '';
   if (!armyList(state).length) {
-    mpMsg('Najpierw zdobądź jakieś kulki!');
+    mpMsg(t('mp.needBalls'));
     return false;
   }
   if (!net) return false; // no transport (YT builds never reach here)
   mpClose();
   if (!(await net.loadLibrary())) {
-    mpMsg('Nie udało się załadować biblioteki sieciowej.');
+    mpMsg(t('mp.libFail'));
     return false;
   }
   mp.mine = {
@@ -817,7 +846,7 @@ async function mpPrep(): Promise<boolean> {
     },
   };
   if (!(await net.connect())) {
-    mpMsg('Nie udało się połączyć z żadnym serwerem pośredniczącym. Sprawdź internet albo spróbuj później.');
+    mpMsg(t('mp.connectFail'));
     return false;
   }
   return true;
@@ -846,7 +875,7 @@ function mpRoom(code: string, isHost: boolean, maxN: number, onFail?: () => void
       if (d.host === isHost || mp.started) return;
       mp.opp = { a: d.a!, pw: d.pw! };
       mp.oppName = d.name!;
-      mpDbg('Przeciwnik w pokoju: ' + d.name);
+      mpDbg(t('mp.opponentJoined', { name: d.name }));
       if (isHost) {
         hello();
         const seed = Math.floor(rng() * 1e6);
@@ -865,7 +894,7 @@ function mpRoom(code: string, isHost: boolean, maxN: number, onFail?: () => void
       fight.over = true;
       gainXp(20);
       requestSave();
-      wLog('Przeciwnik opuścił grę — wygrywasz walkowerem! (+20 XP)');
+      wLogKey('war.forfeit');
       renderWarView();
     }
   });
@@ -880,7 +909,7 @@ function mpRoom(code: string, isHost: boolean, maxN: number, onFail?: () => void
     if (++cnt > maxN) {
       if (mp.iv !== null) clearInterval(mp.iv);
       if (onFail) onFail();
-      else mpMsg(isHost ? 'Nikt nie dołączył. Spróbuj ponownie.' : 'Nie ma takiego pojedynku albo przeciwnik już wyszedł. Sprawdź kod.');
+      else mpMsg(isHost ? t('mp.hostIdle') : t('mp.noRoom'));
       return;
     }
     hello();
@@ -905,9 +934,10 @@ function mpBegin(seed: number): void {
   mp.on = true;
   hide('mp');
   show('war');
+  setWarOpen(true);
   startTicker();
   renderWarView();
-  wLog(`Pojedynek z: ${mp.oppName}`);
+  wLogKey('war.duelOpp', { name: mp.oppName });
 }
 
 function mpEnd(f: Fight, pa: boolean, ea: boolean): void {
@@ -915,17 +945,17 @@ function mpEnd(f: Fight, pa: boolean, ea: boolean): void {
   f.over = true;
   const draw = !pa && !ea;
   const win = f.flip ? !pa && ea : pa && !ea;
-  if (draw) wLog('Remis!');
+  if (draw) wLogKey('war.draw');
   else if (win) {
     const r = Math.round(40 * (1 + accLvl(state) * 0.5));
     state.coins += r;
     gainXp(60);
     sfx.coin();
-    wLog(`Wygrywasz pojedynek! +🪙${r}, +60 XP`);
+    wLogKey('war.duelWin', { r });
   } else {
     state.coins += 10;
     gainXp(15);
-    wLog('Przegrana w pojedynku. +🪙10, +15 XP (kulki bezpieczne)');
+    wLogKey('war.duelLoss');
   }
   requestSave();
   renderWarView();
@@ -935,17 +965,17 @@ async function mpHost(): Promise<void> {
   if (!(await mpPrep())) return;
   const code = Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(rng() * 31)]).join('');
   mpRoom(code, true, 80);
-  mpMsg(`Twój kod: ${code} — przekaż go przeciwnikowi i czekaj…`);
+  mpMsg(t('mp.yourCode', { code }));
 }
 
 async function mpJoin(): Promise<void> {
   const code = ($('mpCode') as HTMLInputElement).value.trim().toUpperCase();
   if (!code) {
-    mpMsg('Wpisz kod pojedynku.');
+    mpMsg(t('mp.enterCode'));
     return;
   }
   if (!(await mpPrep())) return;
-  mpMsg('Łączenie z pojedynkiem ' + code + '…');
+  mpMsg(t('mp.connecting', { code }));
   mpRoom(code, false, 20);
 }
 
@@ -954,13 +984,13 @@ async function mpFind(): Promise<void> {
   const n = net;
   if (!n) return;
   mp.searching = true;
-  mpMsg('Szukam przeciwnika…');
+  mpMsg(t('mp.seeking'));
   let matched = false;
   const end = Date.now() + 60000;
   mp.seekIv = setInterval(() => {
     if (matched) return;
     if (Date.now() > end) {
-      mpMsg('Nie znaleziono przeciwnika. Spróbuj ponownie albo użyj kodu.');
+      mpMsg(t('mp.noOpponent'));
       mpClose();
       return;
     }
@@ -969,13 +999,13 @@ async function mpFind(): Promise<void> {
   n.pub('lobby', { t: 'seek' });
   const enter = (room: string, host: boolean): void => {
     matched = true;
-    mpMsg('Znaleziono przeciwnika! Łączenie…');
+    mpMsg(t('mp.found'));
     mpRoom(room, host, host ? 12 : 20, () => {
       if (!mp.searching) return;
       matched = false;
       n.unsubscribe(mp.room ?? '');
       mp.room = null;
-      mpMsg('Szukam przeciwnika…');
+      mpMsg(t('mp.seeking'));
     });
   };
   n.sub('lobby', (d) => {
@@ -990,6 +1020,14 @@ async function mpFind(): Promise<void> {
   });
 }
 
+/** The multiplayer intro line (open + locale switches). */
+function updateMpInfo(): void {
+  const army = armyList(state);
+  btn('mpInfo').textContent = army.length
+    ? t('mp.infoArmy', { n: army.length })
+    : t('mp.infoEmpty');
+}
+
 function bindMp(): void {
   btn('mpBtn').onclick = () => {
     warmAudio();
@@ -998,10 +1036,7 @@ function bindMp(): void {
     hide('menu');
     show('mp');
     mpMsg('');
-    const army = armyList(state);
-    btn('mpInfo').textContent = army.length
-      ? `Do walki idzie twoich ${army.length} najsilniejszych kulek (maks. 5). Przegrana nie odbiera kulek.`
-      : 'Nie masz jeszcze kulek. Połącz je w kopalni.';
+    updateMpInfo();
   };
   btn('mpFind').onclick = () => void mpFind();
   btn('mpHost').onclick = () => void mpHost();
@@ -1063,11 +1098,44 @@ const blockIfPaused = (e: Event): void => {
   }
 };
 
+// ---- locale switch (Phase 4: setLocale re-renders DOM + canvas) ----
+
+/** One full re-render in the active locale — registered as the setLocale listener. */
+function applyLocale(): void {
+  document.documentElement.lang = getLocale();
+  document.title = t('app.title');
+  applyStatic(); // static index.html markup (data-i18n / -aria / -ph)
+  updSnd(isMuted());
+  armWipe(false); // re-translate the reset button (and disarm — safest)
+  updateMenuLabels();
+  refresh(); // HUD + board: render()/MineScene draw t()/numF() at call time
+  // Dynamic chrome of whichever screen is open follows the switch:
+  if (!$('war').classList.contains('hide')) {
+    renderWarView();
+    if (logKey !== null) warLog(t(logKey, logParams)); // canvas log, same line
+  }
+  if (!$('stats').classList.contains('hide')) renderStatsView();
+  if (!$('crateov').classList.contains('hide')) renderCrate(state, spinning);
+  if (!$('shop').classList.contains('hide')) renderShopView();
+  if (!$('sinv').classList.contains('hide')) renderSInvView();
+  if (!$('sspin').classList.contains('hide')) {
+    if (curCrate) $('sTitle').textContent = '📦 ' + t(`crate.name.${CRATES.indexOf(curCrate)}`);
+    renderSpinView();
+  }
+  if (!$('scont').classList.contains('hide')) renderContBody();
+  if (!$('mp').classList.contains('hide')) updateMpInfo();
+}
+
 // ---- boot sequence (legacy boot(): updSnd → render → openMenu → sendBest) ----
 
 export function startApp(p: Platform): void {
   platform = p;
   setAudioGate(() => platform.isAudioEnabled()); // PLAN DoD: sfx follows the platform
+
+  // Phase 4 i18n: locale from the platform (mock defaults to pl locally);
+  // the listener fires once now (one boot render) and on every setLocale.
+  onLocaleChange(applyLocale);
+  setLocale(resolveLanguage(p.getLanguage()));
 
   bindControls();
   bindDrop();

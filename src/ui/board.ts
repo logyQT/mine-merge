@@ -31,15 +31,29 @@ export interface BoardApi {
   render(s: GameState, ui: Ui, h: Handlers, rng: Rng): void;
   renderMine(s: GameState, rng: Rng, hit?: Hit): void;
   flyBall(s: GameState, i: number, c: number, r: number, L: number, rng: Rng): Promise<void>;
+  /**
+   * Shows/hides every board pixel (Phase 4): while the war screen is open
+   * the canvas rises above the opaque #war overlay (.canvas-top), so the
+   * board would otherwise paint straight over it — one canvas, two scenes.
+   */
+  setVisible(v: boolean): void;
 }
 
 let api: BoardApi | null = null;
 let last: [GameState, Ui, Handlers, Rng] | null = null;
+let visible = true;
 
 /** Called by MineScene.create(); replays the cached first render, if any. */
 export function registerBoard(b: BoardApi): void {
   api = b;
+  b.setVisible(visible);
   if (last) b.render(...last);
+}
+
+/** Hides/shows the board drawing (war-canvas's setWarOpen owns the toggle). */
+export function boardVisible(v: boolean): void {
+  visible = v;
+  api?.setVisible(v);
 }
 
 /** Full board redraw (grid + mine) — same cadence as the DOM view's render(). */

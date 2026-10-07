@@ -13,4 +13,6 @@ declare global {
     | undefined;
   /** Local-only (see src/main.ts): generates a ball texture, returns its key. */
   var __ensureBall: ((skinId: string, L: number, rar: number) => string) | undefined;
+  /** Local-only (src/ui/war-canvas.ts): last battle-log text (canvas-drawn). */
+  var __warLog: string | undefined;
 }

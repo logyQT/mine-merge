@@ -114,6 +114,29 @@ await legacy.evaluate(() => window.scrollTo(0, document.documentElement.scrollHe
 await settle(legacy);
 await legacy.screenshot({ path: `${OUT}/legacy-360-bottom.png` });
 
+// --- war screen (Phase 4): army rows + battle log — canvas (kit) vs DOM (legacy) ---
+const warSeq = async (page, prefix) => {
+  // Both pages boot into the menu with the same fixture — armyList is
+  // deterministic, so the paired prepare shots line up ball-for-ball.
+  await page.locator('#warBtn').click();
+  await page.waitForSelector('#war');
+  await settle(page);
+  await page.screenshot({ path: `${OUT}/${prefix}-war-prepare.png` });
+  await page.locator('#pFire').click(); // war power 1 → 🔥 markers on the first hits
+  await page.locator('#wGo').click();
+  await page.waitForTimeout(1400); // mid-fight: HP bars drawn down, markers live
+  await page.screenshot({ path: `${OUT}/${prefix}-war-fight.png` });
+  await page.setViewportSize({ width: 360, height: 640 });
+  await settle(page);
+  await page.screenshot({ path: `${OUT}/${prefix}-war-360.png` });
+};
+const kitWar = await open('http://localhost:8091/', 'mine-merge-save-v1', { width: 800, height: 600 });
+await kitWar.waitForFunction(() => globalThis.__platform?.ready === true);
+await warSeq(kitWar, 'kit');
+const legacyWar = await open('http://localhost:8092/', 'kopalnia-save-v1', { width: 800, height: 600 });
+await legacyWar.waitForSelector('#warBtn');
+await warSeq(legacyWar, 'legacy');
+
 await browser.close();
 console.log('errors:', errs.length ? errs : 'none');
 console.log('shots in', OUT);

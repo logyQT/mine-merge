@@ -149,9 +149,24 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   await seedSave(page); // the fixture brings balls to fight with
   await gotoKit(page); // boot menu is open — war launches from here
 
+  // Phase 4: the battle log is canvas-drawn (WarScene) — #wLog stays an
+  // empty spacer, so suites read the text through the local-only hook.
+  const warLog = async (): Promise<string> => (await page.evaluate(() => globalThis.__warLog)) ?? '';
+
   await page.getByRole('button', { name: 'Wojna' }).click();
   await expect(page.locator('#war')).toBeVisible();
-  await expect(page.locator('#wLog')).toContainText('Wróg poz.'); // prepareFight rolled
+  await expect.poll(warLog).toContain('Wróg poz.'); // prepareFight rolled
+
+  // The opaque #war overlay would hide the canvas, so #app.canvas-top lifts
+  // it above (z-index 20) with pointer-events:none — DOM buttons keep the
+  // clicks — and the row/log spacers carry the legacy heights (probed:
+  // .wb 73px no markers, #wLog min-height 34).
+  await expect(page.locator('#app')).toHaveClass(/canvas-top/);
+  const canvas = page.locator('#app canvas');
+  expect(await canvas.evaluate((el) => getComputedStyle(el).zIndex)).toBe('20');
+  expect(await canvas.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+  await expect(page.locator('#eRow')).toHaveCSS('height', '73px');
+  await expect(page.locator('#wLog')).toHaveCSS('height', '34px');
 
   // Buy one war upgrade (fixture has coins): 100 → next costs 220.
   await page.locator('#pSlow').click();
@@ -160,15 +175,61 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   // Start the fight, wait for a verdict, then roll the next battle.
   await expect(page.locator('#wGo')).toHaveText('Walka!');
   await page.locator('#wGo').click();
-  await expect(page.locator('#wLog')).toHaveText('Bitwa!');
-  await expect(page.locator('#wLog')).toContainText(/Zwycięstwo!|Porażka/, { timeout: 30000 });
+  await expect.poll(warLog).toBe('Bitwa!');
+  await expect.poll(warLog, { timeout: 30000 }).toMatch(/Zwycięstwo!|Porażka/);
   await expect(page.locator('#wGo')).toHaveText('Dalej');
   await page.locator('#wGo').click();
-  await expect(page.locator('#wLog')).toContainText('Wróg poz.');
+  await expect.poll(warLog).toContain('Wróg poz.');
 
   await page.getByRole('button', { name: 'Wróć do menu' }).click();
   await expect(page.locator('#menu')).toBeVisible();
+  // The canvas is handed back to the board scene (.canvas-top removed).
+  await expect(page.locator('#app')).not.toHaveClass(/canvas-top/);
   expect(await page.evaluate(() => globalThis.__platform!.ready)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('en locale: English chrome, canvas log, layout fits at 360 px', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 360, height: 640 });
+  await seedSave(page);
+  await page.goto('/?lang=en'); // mock getLanguage() honors the ?lang override
+  await page.waitForFunction(() => globalThis.__platform?.ready === true);
+
+  // <html lang> and document.title follow the locale; the static data-i18n
+  // sweep already translated the hint line before the first interaction.
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(await page.title()).toBe('Kopalnia');
+  await expect(page.locator('#msg')).toHaveText(
+    'Tap an item, then another of the same kind, to merge them.',
+  );
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'War of Balls' })).toBeVisible();
+
+  // EN expansion at 360 px: the column and every visible button/input fit.
+  const fit = await page.evaluate(() => {
+    const app = document.getElementById('app')!;
+    const over = [...document.querySelectorAll<HTMLElement>('button, input')]
+      .filter((el) => el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => el.id || el.textContent || '?');
+    return { app: app.scrollWidth - app.clientWidth, over };
+  });
+  expect(fit.app).toBeLessThanOrEqual(0);
+  expect(fit.over).toEqual([]);
+
+  // Dynamic HUD chrome renders through t() too.
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('#spawn')).toContainText('New (lvl');
+
+  // The war screen draws t() at render time — on the canvas.
+  await page.locator('#menuBtn').click();
+  await page.getByRole('button', { name: 'War of Balls' }).click();
+  const warLog = async (): Promise<string> => (await page.evaluate(() => globalThis.__warLog)) ?? '';
+  await expect.poll(warLog).toContain('Enemy level');
+  await expect(page.locator('#wInfo')).toContainText('Account level');
+  await expect(page.locator('#pSlow')).toContainText('Slowdown');
+  await page.getByRole('button', { name: 'Back to menu' }).click();
+  await expect(page.locator('#menu')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

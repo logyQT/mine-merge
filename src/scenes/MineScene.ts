@@ -17,10 +17,10 @@
 import * as Phaser from 'phaser';
 import { COLS, N } from '../config';
 import { curRar, curSkin } from '../core/cosmetics';
-import { fmt } from '../core/economy';
 import { rowAt, viewRows } from '../core/mine';
 import type { Rng } from '../core/rng';
 import type { GameState } from '../core/state';
+import { numF } from '../i18n';
 import { registerBoard, type Handlers, type Hit, type Ui } from '../ui/board';
 import { tier } from '../ui/palette';
 import { BALL_D, CELL_H, CELL_W, ensureBallTexture, MINE_EMPTY, mineTexKey } from './textures';
@@ -147,6 +147,9 @@ export class MineScene extends Phaser.Scene {
       render: (s, ui, h, rng) => this.renderBoard(s, ui, h, rng),
       renderMine: (s, rng, hit) => this.renderMineOnly(s, rng, hit),
       flyBall: (s, i, c, r, L, rng) => this.flyBall(s, i, c, r, L, rng),
+      // Phase 4: setWarOpen() hides the board while the canvas is lifted
+      // above the #war overlay (it would paint over the war view).
+      setVisible: (v) => this.scene.setVisible(v),
     });
   }
 
@@ -203,7 +206,7 @@ export class MineScene extends Phaser.Scene {
         const tex = alive ? mineTexKey(tier(b.hp)) : MINE_EMPTY;
         cell.img.setTexture(tex);
         cell.flash.setTexture(tex);
-        cell.text.setText(alive ? (b.gem ? '💎 ' : '') + fmt(b.hp) : '').setVisible(alive);
+        cell.text.setText(alive ? (b.gem ? '💎 ' : '') + numF(b.hp) : '').setVisible(alive);
         cell.gem.setVisible(alive && b.gem);
       }
     }

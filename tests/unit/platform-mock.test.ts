@@ -106,9 +106,11 @@ describe('mock platform', () => {
     expect(p.rewards).toEqual(['crate-free-1']);
   });
 
-  it('resolves an explicit language, else derives from navigator', () => {
+  it('resolves an explicit language, else defaults to pl (source locale)', () => {
     expect(createMockPlatform({ language: 'pl' }).getLanguage()).toBe('pl');
-    // jsdom reports en-US by default
-    expect(createMockPlatform().getLanguage()).toBe('en');
+    expect(createMockPlatform({ language: 'en' }).getLanguage()).toBe('en');
+    // No navigator sniffing anymore: the kit is Polish-first (PLAN §Phase 4);
+    // e2e boots en through the ?lang=en override in getLanguage().
+    expect(createMockPlatform().getLanguage()).toBe('pl');
   });
 });

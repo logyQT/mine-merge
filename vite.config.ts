@@ -62,7 +62,9 @@ export default defineConfig({
   preview: { headers },
   test: {
     // Unit tests live in tests/unit; tests/e2e is driven by Playwright
-    // (npm run test:e2e), so vitest must not pick those specs up.
-    include: ['tests/unit/**/*.test.*'],
+    // (npm run test:e2e), so vitest must not pick those specs up. The
+    // extension list (not `*`) also keeps snapshot files — whose names embed
+    // `*.test.ts.snap` — out of the suite collection.
+    include: ['tests/unit/**/*.test.{ts,js}'],
   },
 });

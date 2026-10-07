@@ -223,8 +223,13 @@ test('audio: menu clicks and block breaks produce sound', async ({ page }) => {
 
   const d0 = await osc();
   await page.getByRole('button', { name: 'RZUĆ!' }).click();
-  await expect(page.locator('#msg')).toContainText('Zdobyto', { timeout: 10000 });
-  expect((await osc()) - d0).toBeGreaterThanOrEqual(2); // hit + brk (coin adds more)
+  // Block-break sounds first (lands prove the drop is under way — hit + brk;
+  // a coin sound may add more), then the controls returning = drop settled.
+  // Assert neither on #msg: legacy's level-up toast (msg after 60 ms)
+  // legitimately overwrites "Zdobyto..." when the drop crosses a level, which
+  // happens whenever the re-rolled frontier rows push the XP over.
+  await expect.poll(async () => (await osc()) - d0, { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole('button', { name: 'RZUĆ!' })).toBeEnabled({ timeout: 10000 });
   expect(errors).toEqual([]);
 });
 

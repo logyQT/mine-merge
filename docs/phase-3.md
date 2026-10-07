@@ -1,17 +1,17 @@
 # Phase 3 — Canvas board in Phaser
 
-Status: **PR 1 merged-track (open), PR 2 in review** (started 2026-10-07). Decision
-record lives in PLAN.md §Phase 3 ("Decisions (recorded before starting)") — the short
-version: **the 5×5 merge grid goes to canvas together with `#mine`** (kit guideline:
-*board → canvas, forms/lists/text → DOM*).
+Status: **PRs 1–3 implemented** (started 2026-10-07). Decision record lives in PLAN.md
+§Phase 3 ("Decisions (recorded before starting)") — the short version: **the 5×5 merge
+grid goes to canvas together with `#mine`** (kit guideline: *board → canvas,
+forms/lists/text → DOM*).
 
 ## Stacked-PR slicing (per AGENTS.md)
 
 | # | Branch | Scope | Status |
 |---|---|---|---|
 | 1 | `feature/phase3-textures` | Palettes extracted to `src/ui/palette.ts`; `src/scenes/textures.ts` generates mine-cell + ball textures from them at boot (CanvasTexture, 0 asset files); local-only `__ensureBall` e2e hook; boot contract unchanged. | PR #24 open |
-| 2 | `feature/phase3-minescene` | `MineScene` draws grid + mine from `GameState` (spacers measured per frame), pointer input (tap/drag via `Phaser.Input.Pointer`), `flyBall`/land/hit animations (reduced-motion aware), DOM board deleted, e2e retargeted to canvas gestures + new resize-input test. | local, gates green |
-| 3 | `feature/phase3-hud-polish` | Top bar/buttons extracted to `src/ui/hud.ts`, `style.css`/`game-view.ts` cleanup, resize verification at 360×640 / 800×600 / 1280×800, side-by-side visual check vs `legacy/` (tag `legacy-vanilla`). | not started |
+| 2 | `feature/phase3-minescene` | `MineScene` draws grid + mine from `GameState` (spacers measured per frame), pointer input (tap/drag via `Phaser.Input.Pointer`), `flyBall`/land/hit animations (reduced-motion aware), DOM board deleted, e2e retargeted to canvas gestures + new resize-input test. | PR #25 open |
+| 3 | `feature/phase3-hud` | Play-screen chrome extracted to `src/ui/hud.ts` (game-view keeps the modal screens), comments/style cleanup, 3-viewport resize verification via e2e, `scripts/visual-check.mjs` side-by-side tool. | local, gates green |
 
 ## Exit criteria (PLAN §Phase 3)
 
@@ -19,6 +19,7 @@ version: **the 5×5 merge grid goes to canvas together with `#mine`** (kit guide
 - [x] DOM board rendering deleted (`#grid`/`#mine` are transparent spacers only)
 - [ ] Side-by-side visual check vs `legacy/` passes — **human**; `node scripts/visual-check.mjs`
       shoots both (kit + legacy, same fixture) into `${tmpdir}/mine-merge-visual-check/`
+      (18 paired shots: board/selected/drop burst/full/mine/360 top+bottom)
 - [x] All gates green: `npm test` (144), `typecheck`, `test:e2e` (15), `build:yt`/`build:web`, 3 greps
 
 ## Notes / gotchas discovered while working
@@ -41,3 +42,7 @@ version: **the 5×5 merge grid goes to canvas together with `#mine`** (kit guide
   were unreliable, full-viewport shots are stable.
 - Drop order note: `flyBall` is launched *before* the controller's `refresh()`, so the
   scene captures the start geometry synchronously and the flight lives outside redraws.
+- **e2e msg race (legacy parity)**: the level-up toast (`msg` after 60 ms) overwrites
+  the drop's "Zdobyto…" text when the drop crosses a level — legacy does this too. The
+  audio test now waits on oscillator counts + the drop button re-enabling instead of
+  `#msg`, which was flaky whenever re-rolled frontier rows pushed XP over.

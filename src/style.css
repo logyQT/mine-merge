@@ -1,7 +1,7 @@
-/* Kit-only styles. The game's look lives in legacy/style.css — imported by
-   the app shell as the temporary Phase 2 view layer (PLAN: keep the DOM
-   rendering while core is extracted). Do not add conflicting body/#app
-   layout rules here; legacy owns them (centered 380px column). */
+/* Kit layout rules. The game's look lives in legacy/style.css — imported by
+   the UI modules (pixel parity with legacy-vanilla; Phase 4 cleans it into
+   modules). Do not add conflicting body/#app layout rules here; legacy owns
+   them (centered 380px column). */
 
 /* min-height, not height: legacy/style.css gives body min-height:100vh and
    lets it GROW with content — a fixed height here would let #app's flex

@@ -25,6 +25,18 @@ const servers = [
   spawn(process.execPath, [VITE, 'legacy', '--port', '8092', '--strictPort'], { stdio: 'ignore' }),
 ];
 process.on('exit', () => servers.forEach((s) => s.kill()));
+async function waitForServer(url) {
+  for (let i = 0; i < 60; i++) {
+    try {
+      await fetch(url);
+      return;
+    } catch {
+      await delay(500);
+    }
+  }
+  throw new Error(`server did not start: ${url}`);
+}
+await Promise.all([waitForServer('http://localhost:8091/'), waitForServer('http://localhost:8092/')]);
 
 const browser = await chromium.launch();
 const errs = [];
@@ -54,10 +66,15 @@ await kit.screenshot({ path: `${OUT}/kit-800-board.png` });
 await cell(kit, 0); // selection outline + scaled ball
 await settle(kit);
 await kit.screenshot({ path: `${OUT}/kit-800-selected.png` });
+// Drop: a burst of frames at fixed offsets (compositor lag on animated
+// frames is erratic) — at least one catches the ball in flight over the
+// DOM controls; by the third the drop has usually settled.
 await kit.getByRole('button', { name: 'RZUĆ!' }).click();
-await kit.waitForTimeout(1100); // mid-flight: ball over the DOM controls
-await kit.screenshot({ path: `${OUT}/kit-800-flight.png` });
-await kit.waitForTimeout(2500);
+for (const [i, t] of [900, 600, 600].entries()) {
+  await kit.waitForTimeout(t);
+  await kit.screenshot({ path: `${OUT}/kit-800-drop-${i + 1}.png` });
+}
+await kit.waitForTimeout(1500);
 await kit.screenshot({ path: `${OUT}/kit-800-after-drop-full.png`, fullPage: true });
 await kit.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 await settle(kit);
@@ -80,9 +97,11 @@ await cell(legacy, 0);
 await settle(legacy);
 await legacy.screenshot({ path: `${OUT}/legacy-800-selected.png` });
 await legacy.getByRole('button', { name: 'RZUĆ!' }).click();
-await legacy.waitForTimeout(1100);
-await legacy.screenshot({ path: `${OUT}/legacy-800-flight.png` });
-await legacy.waitForTimeout(2500);
+for (const [i, t] of [900, 600, 600].entries()) {
+  await legacy.waitForTimeout(t);
+  await legacy.screenshot({ path: `${OUT}/legacy-800-drop-${i + 1}.png` });
+}
+await legacy.waitForTimeout(1500);
 await legacy.screenshot({ path: `${OUT}/legacy-800-after-drop-full.png`, fullPage: true });
 await legacy.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
 await settle(legacy);
@@ -98,3 +117,4 @@ await legacy.screenshot({ path: `${OUT}/legacy-360-bottom.png` });
 await browser.close();
 console.log('errors:', errs.length ? errs : 'none');
 console.log('shots in', OUT);
+process.exit(0); // don't wait on fetch keep-alive sockets

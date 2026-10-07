@@ -1,7 +1,9 @@
 // Temporary app shell (PLAN.md Phase 2): wires the ported DOM view to the
 // extracted core, ported from legacy/app.js. Everything here is orchestration
-// — rules/math live in src/core, rendering in src/ui/game-view.ts. When a
-// screen's slice is not ported yet, its menu button stays hidden (index.html).
+// — rules/math live in src/core, rendering in src/ui/hud.ts (play screen),
+// src/ui/game-view.ts (modals) and the canvas board (src/scenes/MineScene
+// via src/ui/board). When a screen's slice is not ported yet, its menu button
+// stays hidden (index.html).
 //
 // Replaces the legacy YG/IN_PLAY/cloudLoad/sendBest blocks: persistence goes
 // through platform.saveSave (debounced), scores through platform.sendScore,
@@ -40,16 +42,12 @@ import { createNet, type Net } from './mp';
 import { prepareFight, tick, wcost, wEnd, armyList, mk, type Fight, type Power } from './core/war';
 import type { Platform } from './platform/types';
 import { flyBall, renderMine, type Handlers, type Ui } from './ui/board';
+import { $, btn, luckMsg, msg, render, setGone, updSnd } from './ui/hud';
 import {
-  $,
-  btn,
   cellHtml,
   CW,
   hide,
-  luckMsg,
-  msg,
   perkHtml,
-  render,
   renderContBody,
   renderCrate,
   renderShop,
@@ -57,7 +55,6 @@ import {
   renderSpin,
   renderStats,
   renderWar,
-  setGone,
   show,
   skCell,
   stripReset,
@@ -65,7 +62,6 @@ import {
   stripWin,
   mpDbg,
   mpMsg,
-  updSnd,
   wLog,
 } from './ui/game-view';
 

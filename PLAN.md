@@ -233,16 +233,38 @@ save migration + war balance, **zero gameplay logic left in the view layer.**
 Exit criteria: mine loop (spawn → merge → drop → destroy → coins → upgrade) fully in
 Phaser, DOM board rendering deleted. Side-by-side visual check vs `legacy/`.
 
-### Phase 4 — Remaining screens + i18n (2–3 days)
+### Phase 4 — Remaining screens + i18n (3–4 days)
 
-1. **War** to `WarScene` (or keep DOM if the log-heavy UI reads better — decision point;
-   log it either way as a kit guideline: *board → canvas, forms/lists → DOM*).
-2. Extract every string to `locales/pl.json`, add `en.json`, switch `t()` into all UI.
-   Use `Intl.NumberFormat` (fmt() currently hand-rolls k/M — replace with locale-aware).
-   Get `platform.getLanguage()` from YT, default `pl` locally.
+**Decisions (recorded):**
+
+- **War → `WarScene` on canvas: YES, in this phase.** Direction set by the human
+  (2026-10-07): *everything moves to canvas over time* — the DOM chrome is transitional.
+  Scope mirrors Phase 3: the war **view** (army rows, HP bars, battle log) renders in
+  `WarScene` from `GameState`/`Fight`; the modal shell + its buttons stay DOM this phase
+  because they are the i18n surface (item 2) — full-canvas modals come later, once the
+  kit has canvas text/button primitives.
+- **Kit guideline (evolves):** *canvas-first; DOM only for text-heavy chrome/forms until
+  the kit ships canvas text layout.* This supersedes "board → canvas, forms/lists → DOM"
+  as the long-term target — DOM stays the interim default for text surfaces only.
+
+1. `WarScene`: army rows reuse the ball textures (`ensureBallTexture`), HP bars +
+   burn/slow/weak markers via Graphics/Text, battle log as word-wrapped Phaser Text.
+   `#war` gets transparent measure-spacers for `#eRow`/`#wLog`/`#pRow` and a
+   `.canvas-top` state while open: canvas above the overlay (its `var(--bg)` background
+   would hide it otherwise) with `pointer-events:none` — war needs **no** canvas input,
+   so clicks must keep reaching the DOM buttons. `core/war.ts`, the ticker and the PvP
+   path stay untouched.
+2. Extract every string to `locales/pl.json` (**source of truth — byte-identical
+   extraction**), add `en.json`, switch `t()` into all UI (hud, game-view modals, app
+   messages, static `index.html` text). `Intl.PluralRules` for Polish plural forms,
+   `Intl.NumberFormat` (compact) replacing display `fmt()`; `setLocale()` re-renders
+   DOM **and** canvas. Language from `platform.getLanguage()`, default `pl` locally.
+   In-ball texture labels stay on the invariant compact format (or put locale in the
+   texture key) — textures bake their label.
 3. Layout check with longer EN/DE strings (buttons must not overflow at 360 px) —
-   this is where hardcoded Polish widths usually break.
-4. `viewport-fit=cover` + safe-area insets for notched phones.
+   this is where hardcoded Polish widths usually break; `en` gets an e2e smoke.
+4. `viewport-fit=cover` + safe-area insets for notched phones — **already present**
+   (index.html + `legacy/style.css` `:root env(...)`) — verify only, don't re-add.
 
 ### Phase 5 — Monetization + certification (1–2 days)
 
@@ -294,7 +316,7 @@ scaffolding-only work:
 | Multiplayer MQTT breaks YT certification | Compile-time exclusion, not runtime guard; verify with `grep` on `dist/yt` |
 | Canvas rewrite eats time | Phases 2–3 are separable: kit is shippable after Phase 2 (DOM view), canvas is an upgrade, not a blocker |
 | i18n reveals layout bugs late | Do the EN pass in Phase 4 *before* submitting, not after rejection |
-| Scope creep (war in canvas, skins in canvas) | Rule: board → canvas, forms/lists → DOM. Documented as a kit guideline |
+| Scope creep (every screen to canvas at once) | Canvas-first direction recorded (PLAN §Phase 4) but scope stays per-phase: Phase 4 = war *view* + i18n only; modal shells and crate/shop spinners stay DOM until the kit has canvas text/button primitives |
 
 ## Effort snapshot
 
@@ -304,7 +326,7 @@ scaffolding-only work:
 | 1 Kit scaffold | 1–2 days |
 | 2 Core extraction (DOM view kept) | 2–3 days |
 | 3 Phaser board | 3–5 days |
-| 4 Screens + i18n | 2–3 days |
+| 4 Screens + i18n | 3–4 days |
 | 5 Ads + certification | 1–2 days |
 | 6 Kit promotion | 1 day |
 | **Total** | **~2–3 weeks** part-time, game continuously playable |

@@ -53,7 +53,7 @@ describe('portal platform (stub)', () => {
     expect(isDebugPlatform(createPortalPlatform())).toBe(false);
   });
 
-  it('keeps ads inert like yt: interstitial no-op, rewarded resolves false', async () => {
+  it('keeps ads inert (no portal ad SDK): interstitial no-op, rewarded resolves false', async () => {
     const p = createPortalPlatform();
     expect(p.features.ads).toBe(false);
     await expect(p.requestInterstitial()).resolves.toBeUndefined();

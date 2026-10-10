@@ -138,9 +138,13 @@ export function createMockPlatform(opts: MockPlatformOptions = {}): MockPlatform
 
     async requestInterstitial() {
       interstitials += 1;
+      // Dev visibility (Phase 5): the mock resolves instantly, so placement
+      // bugs show up in the console without a real ad break.
+      console.log(`[ads] interstitial #${interstitials}`);
     },
     async requestRewarded(rewardId) {
       rewards.push(rewardId);
+      console.log(`[ads] rewarded "${rewardId}" → true (mock always grants)`);
       return true;
     },
 

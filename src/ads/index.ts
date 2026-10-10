@@ -18,6 +18,8 @@ export const REWARD = {
   boost2x: 'boost-2x-1',
   /** Double the war-win payout (war screen). */
   warDouble: 'war-double-1',
+  /** Double the current coin balance (play HUD). */
+  coinsDouble: 'coins-double-1',
   /** Stat respec instead of the coin cost (stats screen). */
   statsReset: 'stats-reset-1',
 } as const;

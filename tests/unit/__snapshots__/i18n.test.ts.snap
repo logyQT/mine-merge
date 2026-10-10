@@ -4,6 +4,8 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
 {
   "ad.boost": "📺 ×2 monety (60 s)",
   "ad.boostOn": "×2 monety: {s} s",
+  "ad.coinsDouble": "📺 Podwój monety (reklama)",
+  "ad.coinsDoubleDone": "Podwojone! 🪙{coins}",
   "ad.crateFree": "🎁 Darmowa skrzynka (reklama 📺)",
   "ad.fail": "Nie udało się wyemitować reklamy — spróbuj ponownie później.",
   "ad.warDouble": "📺 Podwój nagrodę (reklama)",
@@ -194,6 +196,8 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
 {
   "ad.boost": "📺 ×2 coins (60 s)",
   "ad.boostOn": "×2 coins: {s}s",
+  "ad.coinsDouble": "📺 Double coins (ad)",
+  "ad.coinsDoubleDone": "Doubled! 🪙{coins}",
   "ad.crateFree": "🎁 Free crate (ad 📺)",
   "ad.fail": "The ad couldn't be shown — try again later.",
   "ad.warDouble": "📺 Double the reward (ad)",

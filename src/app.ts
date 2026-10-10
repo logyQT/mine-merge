@@ -147,6 +147,7 @@ function refresh(): void {
   const ui: Ui = { sel, busy };
   render(state, ui, HANDLERS, rng);
   renderBoost();
+  renderDouble();
   requestSave(); // legacy render() called save() here
 }
 
@@ -369,6 +370,7 @@ function passiveTick(): void {
   if (paused || state.econ.pas < 1) return;
   state.coins += Math.round(state.econ.pas * (1 + 0.05 * (accLvl(state) - 1))) * boostMul();
   $('coins').textContent = numF(state.coins);
+  renderDouble(); // coins may have crossed the < 1 disable threshold
 }
 
 function startPassive(): void {
@@ -421,6 +423,33 @@ function bindBoost(): void {
       startBoostTimer();
       sfx.up();
       msg(t('ad.boostOn', { s: BOOST_MS / 1000 }));
+    } else {
+      msg(t('ad.fail'));
+    }
+    refresh();
+  };
+}
+
+// ---- rewarded double-coins (play HUD) ----
+// One-shot balance doubling — the counterpart of the timed boost above.
+// Not saved: state.coins is mutated and requestSave() persists it like any
+// other coin change; nothing schema-side happens.
+
+function renderDouble(): void {
+  const b = btn('dbl');
+  b.style.display = platform.features.ads ? '' : 'none';
+  b.disabled = busy || adBusy || state.coins < 1; // doubling 0 is pointless
+}
+
+function bindDouble(): void {
+  btn('dbl').onclick = async () => {
+    if (busy || adBusy || state.coins < 1) return;
+    const ok = await rewarded(REWARD.coinsDouble);
+    if (ok) {
+      state.coins *= 2;
+      sfx.coin();
+      msg(t('ad.coinsDoubleDone', { coins: numF(state.coins) }));
+      requestSave();
     } else {
       msg(t('ad.fail'));
     }
@@ -1289,6 +1318,7 @@ export function startApp(p: Platform): void {
   bindDrop();
   bindMenu();
   bindBoost();
+  bindDouble();
   bindStats();
   bindCrate();
   bindShop();

@@ -81,6 +81,8 @@
   "ad.crateFree": "🎁 Free crate (ad 📺)",
   "ad.boost": "📺 ×2 coins (60 s)",
   "ad.boostOn": "×2 coins: {s}s",
+  "ad.coinsDouble": "📺 Double coins (ad)",
+  "ad.coinsDoubleDone": "Doubled! 🪙{coins}",
   "ad.warDouble": "📺 Double the reward (ad)",
   "ad.warDoubleDone": "Doubled! +🪙{coins}",
   "stats.help": "Each account level grants 1 point. The higher your level, the tougher the mine blocks (+5% health per level), so points help you keep up rather than beat the game.",

@@ -149,19 +149,31 @@ test('rewarded ads: free crate, stats respec and boost work through the mock', a
   await expect(page.locator('#boost')).toBeDisabled();
   expect(await rewards()).toContain('boost-2x-1');
 
+  // Double coins: doubles the current balance once per ad.
+  await expect(page.locator('#dbl')).toBeVisible();
+  const coinsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{"coins":0}').coins);
+  await page.locator('#dbl').click();
+  await expect(page.locator('#msg')).toContainText('Podwojone!');
+  expect(await rewards()).toContain('coins-double-1');
+  await settleSaves(page);
+  const coinsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{"coins":0}').coins);
+  // ×2 minus any passive-income drift (pas:1 in the fixture adds ~1/2 s).
+  expect(coinsAfter).toBeGreaterThanOrEqual(coinsBefore * 2 - 5);
+  expect(coinsAfter).toBeLessThan(coinsBefore * 2 + 5);
+
   // Stats respec: ad-gated (free) instead of the legacy coin price.
   await page.locator('#menuBtn').click();
   await page.getByRole('button', { name: 'Statystyki' }).click();
   await expect(page.locator('#sReset')).toHaveText('Przydziel od nowa za darmo (reklama 📺)');
   await expect(page.locator('#sReset')).toBeEnabled();
-  const coinsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
+  const respecCostBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
   await page.locator('#sReset').click();
   await expect(page.locator('#stats #sInfo')).toContainText('wolne punkty: 4'); // reset → accLvl 5 − 1
   expect(await rewards()).toContain('stats-reset-1');
   await settleSaves(page);
-  const coinsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
+  const respecCostAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
   // Free: no legacy 50×lvl deduction — only passive-income drift (≤ a few coins).
-  expect(coinsAfter - coinsBefore).toBeLessThan(50);
+  expect(respecCostAfter - respecCostBefore).toBeLessThan(50);
   expect(errors).toEqual([]);
 });
 

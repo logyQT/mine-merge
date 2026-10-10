@@ -53,6 +53,7 @@ describe('reward ids', () => {
       crateFree: 'crate-free-1',
       boost2x: 'boost-2x-1',
       warDouble: 'war-double-1',
+      coinsDouble: 'coins-double-1',
       statsReset: 'stats-reset-1',
     });
     for (const id of Object.values(REWARD)) expect(id).toMatch(/^[a-z0-9-]+$/);

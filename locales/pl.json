@@ -93,6 +93,8 @@
   "ad.crateFree": "🎁 Darmowa skrzynka (reklama 📺)",
   "ad.boost": "📺 ×2 monety (60 s)",
   "ad.boostOn": "×2 monety: {s} s",
+  "ad.coinsDouble": "📺 Podwój monety (reklama)",
+  "ad.coinsDoubleDone": "Podwojone! 🪙{coins}",
   "ad.warDouble": "📺 Podwój nagrodę (reklama)",
   "ad.warDoubleDone": "Podwojone! +🪙{coins}",
   "stats.help": "Za każdy poziom konta dostajesz 1 punkt. Im wyższy poziom, tym jednak twardsze bloki w kopalni (+5% życia na poziom), więc punkty pomagają dotrzymać kroku, a nie przejść grę.",

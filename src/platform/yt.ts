@@ -16,6 +16,7 @@ export interface YtGame {
   >;
   engagement: Pick<typeof ytgame.engagement, 'sendScore'>;
   health: Pick<typeof ytgame.health, 'logWarning' | 'logError'>;
+  ads: Pick<typeof ytgame.ads, 'requestInterstitialAd' | 'requestRewardedAd'>;
 }
 
 function sdkFromGlobal(): YtGame | undefined {
@@ -49,9 +50,8 @@ export function createYtPlatform(sdk: YtGame | undefined = sdkFromGlobal()): Pla
 
   return {
     id: 'yt',
-    // ads stays false until the ad API is ported (PLAN Part 2, Phase 5);
     // multiplayer is compile-time excluded from YT builds (__PLATFORM__).
-    features: { ads: false, multiplayer: false, cloudSave: true },
+    features: { ads: true, multiplayer: false, cloudSave: true },
 
     async init(onProgress) {
       onProgress(0);
@@ -142,13 +142,27 @@ export function createYtPlatform(sdk: YtGame | undefined = sdkFromGlobal()): Pla
       guard(() => sdk?.health.logWarning());
     },
 
-    // TODO(Part 2, Phase 5): port ytgame.ads.requestInterstitialAd() /
-    // requestRewardedAd(rewardId); graceful no-ops until then.
+    // Ads (PLAN Phase 5.1): both calls are best-effort per the SDK contract —
+    // requestInterstitialAd rejects on an unsuccessful request (handled here,
+    // never surfaced to gameplay), requestRewardedAd resolves false when no
+    // reward was earned. Outside the Playables env both degrade to no-ops.
     async requestInterstitial() {
-      /* no-op */
+      if (!inPlay || !sdk) return;
+      try {
+        await sdk.ads.requestInterstitialAd();
+      } catch {
+        // Docs: the error may be undefined — health noise only, never fatal.
+        guard(() => sdk?.health.logWarning());
+      }
     },
-    async requestRewarded() {
-      return false;
+    async requestRewarded(rewardId) {
+      if (!inPlay || !sdk) return false;
+      try {
+        return await sdk.ads.requestRewardedAd(rewardId);
+      } catch {
+        guard(() => sdk?.health.logWarning());
+        return false;
+      }
     },
   };
 }

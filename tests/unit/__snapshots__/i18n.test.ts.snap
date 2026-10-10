@@ -2,6 +2,12 @@
 
 exports[`locale files > pl.json is byte-identical to the extracted legacy strings (snapshot) 1`] = `
 {
+  "ad.boost": "📺 ×2 monety (60 s)",
+  "ad.boostOn": "×2 monety: {s} s",
+  "ad.crateFree": "🎁 Darmowa skrzynka (reklama 📺)",
+  "ad.fail": "Nie udało się wyemitować reklamy — spróbuj ponownie później.",
+  "ad.warDouble": "📺 Podwój nagrodę (reklama)",
+  "ad.warDoubleDone": "Podwojone! +🪙{coins}",
   "app.title": "Kopalnia",
   "common.back": "Wróć",
   "common.backToMenu": "Wróć do menu",
@@ -150,6 +156,7 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
   "stats.help": "Za każdy poziom konta dostajesz 1 punkt. Im wyższy poziom, tym jednak twardsze bloki w kopalni (+5% życia na poziom), więc punkty pomagają dotrzymać kroku, a nie przejść grę.",
   "stats.info": "Poziom {l} · wolne punkty: {p}",
   "stats.reset": "Przydziel od nowa 🪙{c}",
+  "stats.resetAd": "Przydziel od nowa za darmo (reklama 📺)",
   "stats.title": "⭐ Statystyki",
   "war.bitwa": "Bitwa!",
   "war.draw": "Remis!",
@@ -184,6 +191,12 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
 
 exports[`locale files > pl.json is byte-identical to the extracted legacy strings (snapshot) 2`] = `
 {
+  "ad.boost": "📺 ×2 coins (60 s)",
+  "ad.boostOn": "×2 coins: {s}s",
+  "ad.crateFree": "🎁 Free crate (ad 📺)",
+  "ad.fail": "The ad couldn't be shown — try again later.",
+  "ad.warDouble": "📺 Double the reward (ad)",
+  "ad.warDoubleDone": "Doubled! +🪙{coins}",
   "app.title": "Kopalnia",
   "common.back": "Back",
   "common.backToMenu": "Back to menu",
@@ -322,6 +335,7 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
   "stats.help": "Each account level grants 1 point. The higher your level, the tougher the mine blocks (+5% health per level), so points help you keep up rather than beat the game.",
   "stats.info": "Level {l} · free points: {p}",
   "stats.reset": "Respec 🪙{c}",
+  "stats.resetAd": "Free respec (ad 📺)",
   "stats.title": "⭐ Statistics",
   "war.bitwa": "Battle!",
   "war.draw": "Draw!",

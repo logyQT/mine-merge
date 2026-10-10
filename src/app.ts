@@ -10,6 +10,7 @@
 // pause/resume through platform.onPause/onResume (PLAN §1.2).
 
 import { N } from './config';
+import { REWARD, showInterstitial, showRewarded } from './ads';
 import { isMuted, setAudioGate, setMuted, sfx, warmAudio } from './audio/sfx';
 import { crateRoll, CRATES, itVal, ownedMax, perk, RAR, rollPerks, rollRar, rollTheme, rnd5, type CrateDef } from './core/cosmetics';
 import {
@@ -78,6 +79,32 @@ let saveT: ReturnType<typeof setTimeout> | null = null;
 let wipeT: ReturnType<typeof setTimeout> | null = null;
 let platform: Platform;
 
+// ---- rewarded coin boost (PLAN Phase 5.1) ----
+// Transient 2× income after a rewarded ad. Deliberately NOT in GameState —
+// a 60-second boost must not outlive the session (and the save schema stays
+// untouched). Pause-aware per the DoD: pauseGame() parks the remaining ms
+// and resumeGame() re-arms the timer, so a YT ad break can't eat the boost.
+const BOOST_MS = 60_000;
+let boostUntil = 0; // epoch ms; 0 = inactive
+let boostIv: ReturnType<typeof setInterval> | null = null;
+let boostFrozen = 0; // ms left, parked while paused
+
+const boostLeft = (): number => Math.max(0, boostUntil - Date.now());
+/** Multiplier for every "income" credit (drop, bomb, passive). */
+const boostMul = (): number => (boostLeft() > 0 ? 2 : 1);
+
+/** Blocks overlapping ad requests (real ads await a user dismissal). */
+let adBusy = false;
+async function rewarded(id: string): Promise<boolean> {
+  if (adBusy) return false;
+  adBusy = true;
+  try {
+    return await showRewarded(platform, id);
+  } finally {
+    adBusy = false;
+  }
+}
+
 // ---- pause-aware sleep (legacy line 153) ----
 
 const sleep = (ms: number): Promise<void> =>
@@ -119,6 +146,7 @@ function refresh(): void {
   }
   const ui: Ui = { sel, busy };
   render(state, ui, HANDLERS, rng);
+  renderBoost();
   requestSave(); // legacy render() called save() here
 }
 
@@ -255,7 +283,7 @@ function bindControls(): void {
     state.bombs -= 1;
     sfx.boom();
     const raw = applyBomb(state, rng);
-    const e = Math.round(raw * incMul(state, rng));
+    const e = Math.round(raw * incMul(state, rng) * boostMul());
     state.coins += e;
     gainXp(e);
     advanceTopRow(state, rng);
@@ -319,7 +347,7 @@ function bindDrop(): void {
     }
     await Promise.all(P);
     await sleep(300);
-    earned = Math.round(earned * incMul(state, rng));
+    earned = Math.round(earned * incMul(state, rng) * boostMul());
     if (earned > 0) sfx.coin();
     gainXp(earned);
     back.forEach(([i, L]) => (state.grid[i] = L));
@@ -339,7 +367,7 @@ function bindDrop(): void {
 
 function passiveTick(): void {
   if (paused || state.econ.pas < 1) return;
-  state.coins += Math.round(state.econ.pas * (1 + 0.05 * (accLvl(state) - 1)));
+  state.coins += Math.round(state.econ.pas * (1 + 0.05 * (accLvl(state) - 1))) * boostMul();
   $('coins').textContent = numF(state.coins);
 }
 
@@ -352,6 +380,52 @@ function stopPassive(): void {
     clearInterval(passiveIv);
     passiveIv = null;
   }
+}
+
+// ---- rewarded boost button (PLAN Phase 5.1) ----
+
+/** Label + enabled state; runs on every refresh and each countdown tick. */
+function renderBoost(): void {
+  const b = btn('boost');
+  b.style.display = platform.features.ads ? '' : 'none'; // ads-less platform: no dead button
+  const left = boostLeft();
+  b.textContent = left > 0 ? t('ad.boostOn', { s: Math.ceil(left / 1000) }) : t('ad.boost');
+  b.disabled = left > 0 || busy;
+}
+
+function stopBoostTimer(): void {
+  if (boostIv !== null) {
+    clearInterval(boostIv);
+    boostIv = null;
+  }
+}
+
+function startBoostTimer(): void {
+  stopBoostTimer();
+  boostIv = setInterval(() => {
+    if (boostLeft() <= 0) {
+      stopBoostTimer();
+      refresh(); // final label: back to the offer
+    } else {
+      renderBoost(); // countdown only — no full refresh per second
+    }
+  }, 1000);
+}
+
+function bindBoost(): void {
+  btn('boost').onclick = async () => {
+    if (busy || boostLeft() > 0) return;
+    const ok = await rewarded(REWARD.boost2x);
+    if (ok) {
+      boostUntil = Date.now() + BOOST_MS;
+      startBoostTimer();
+      sfx.up();
+      msg(t('ad.boostOn', { s: BOOST_MS / 1000 }));
+    } else {
+      msg(t('ad.fail'));
+    }
+    refresh();
+  };
 }
 
 // ---- menu (legacy lines 442–457) ----
@@ -429,7 +503,9 @@ function bindMenu(): void {
 // ---- stats screen (legacy lines 260–272) ----
 
 function renderStatsView(): void {
-  renderStats(state, addStat);
+  // Views stay platform-free: the controller passes whether the ad-gated
+  // (free) respec is on offer; without ads the legacy coin price returns.
+  renderStats(state, addStat, platform.features.ads);
 }
 
 function addStat(k: keyof AccStats): void {
@@ -448,11 +524,25 @@ function bindStats(): void {
     show('stats');
     renderStatsView();
   };
-  btn('sReset').onclick = () => {
-    const rc = 50 * accLvl(state);
-    if (state.coins < rc || spent(state) === 0) return;
-    state.coins -= rc;
+  btn('sReset').onclick = async () => {
+    if (spent(state) === 0) return;
+    if (platform.features.ads) {
+      // Phase 5: the respec is ad-gated instead of coin-gated (falls back to
+      // the legacy price only on platforms without ads — see renderStatsView).
+      const ok = await rewarded(REWARD.statsReset);
+      if (!ok) {
+        // No dedicated error line on this screen — reuse the info line
+        // (restored by the next renderStatsView).
+        $('sInfo').textContent = t('ad.fail');
+        return;
+      }
+    } else {
+      const rc = 50 * accLvl(state);
+      if (state.coins < rc) return;
+      state.coins -= rc;
+    }
     state.acc.s = { pow: 0, gain: 0, luck: 0, hp: 0 };
+    sfx.up();
     requestSave();
     renderStatsView();
   };
@@ -476,6 +566,21 @@ function bindCrate(): void {
     stripReset($('cstrip'), cells);
     $('cRes').textContent = '';
     show('crateov');
+    renderCrate(state, spinning);
+  };
+  // Rewarded placement (PLAN Phase 5.1): +1 free crate; the spin itself is
+  // unchanged, so no economy code moved — the ad only grants a crate.
+  btn('cFree').onclick = async () => {
+    if (spinning) return;
+    const ok = await rewarded(REWARD.crateFree);
+    if (ok) {
+      state.acc.crates = (state.acc.crates ?? 0) + 1;
+      sfx.up();
+      requestSave();
+      $('cRes').textContent = ''; // success: the crate count in #cInfo shows it
+    } else {
+      $('cRes').textContent = t('ad.fail'); // inside the overlay — #msg is hidden here
+    }
     renderCrate(state, spinning);
   };
   btn('cClose').onclick = () => {
@@ -645,6 +750,9 @@ function bindShop(): void {
       $('sRes').innerHTML = `<span style="color:${RAR[rar].c}">${nameOf(it)}</span><br><span style="font-size:12px">${perkHtml(it, rng)}</span><br>${t('spin.added', { v: numF(itVal(it, rng)) })}`;
       requestSave(); // legacy save()
       renderSpinView();
+      // Natural breakpoint (PLAN Phase 5.1): the paid spin has resolved and
+      // the result is on screen; the ads layer paces this (≥60 s gap).
+      void showInterstitial(platform);
     }, 4400);
   };
 }
@@ -654,6 +762,7 @@ function bindShop(): void {
 let fight: Fight | null = null;
 let wTimer: ReturnType<typeof setInterval> | null = null;
 let warWasRunning = false;
+let warWinCoins = 0; // last win payout, offered for doubling via a rewarded ad
 
 // The war log renders on the canvas; keep the current key+params so a
 // locale switch can re-render the line (Phase 4: canvas draws t() at
@@ -705,12 +814,39 @@ function endFight(win: boolean): void {
   if (win) wLogKey('war.win', { coins: r.coins, xp: r.xp });
   else if (r.lostLvl !== undefined) wLogKey('war.loseBall', { L: r.lostLvl });
   else wLogKey('war.loseSafe');
+  // Phase 5.1: a win offers to double the payout via a rewarded ad.
+  warWinCoins = win ? r.coins : 0;
+  btn('wDouble').classList.toggle('hide', !win || !platform.features.ads);
   requestSave(); // legacy save()
   renderWarView();
+  // Natural breakpoint (PLAN Phase 5.1): the verdict is on screen, the
+  // ticker is stopped. Paced by the ads layer (≥60 s between interstitials).
+  void showInterstitial(platform);
+}
+
+/** Rewarded "double the war payout": adds the win coins again, once. */
+function bindWarDouble(): void {
+  btn('wDouble').onclick = async () => {
+    if (warWinCoins <= 0) return;
+    const ok = await rewarded(REWARD.warDouble);
+    if (ok) {
+      state.coins += warWinCoins;
+      wLogKey('ad.warDoubleDone', { coins: warWinCoins });
+      sfx.coin();
+      warWinCoins = 0;
+      btn('wDouble').classList.add('hide');
+      requestSave();
+    } else {
+      wLogKey('ad.fail');
+    }
+    renderWarView();
+  };
 }
 
 function prepareWar(): void {
   stopWarTimer(); // legacy prepare(): clearInterval(wTimer)
+  warWinCoins = 0; // a new battle voids the pending double offer
+  btn('wDouble').classList.add('hide');
   const p = prepareFight(state, rng);
   fight = p.fight;
   if (p.fight) {
@@ -766,11 +902,14 @@ function bindWar(): void {
     mpClose();
     stopWarTimer();
     fight = null;
+    warWinCoins = 0;
+    btn('wDouble').classList.add('hide');
     hide('war');
     setWarOpen(false); // hand the canvas back to the board first
     refresh();
     openMenu();
   };
+  bindWarDouble();
 }
 
 // ---- multiplayer (legacy lines 376–441) ----
@@ -1057,6 +1196,9 @@ function pauseGame(): void {
   warWasRunning = !!(fight && fight.run && !fight.over);
   stopWarTimer();
   stopPassive();
+  // Park the boost countdown (a YT ad break must not eat the 60 s).
+  boostFrozen = boostLeft();
+  stopBoostTimer();
   try {
     document.getAnimations().forEach((a) => {
       try {
@@ -1075,6 +1217,12 @@ function resumeGame(): void {
   if (!paused) return;
   paused = false;
   startPassive();
+  // Re-arm the parked boost countdown.
+  if (boostFrozen > 0) {
+    boostUntil = Date.now() + boostFrozen;
+    boostFrozen = 0;
+    startBoostTimer();
+  }
   if (warWasRunning && fight && !fight.over && !wTimer) wTimer = setInterval(tickOnce, 100);
   warWasRunning = false;
   try {
@@ -1140,10 +1288,12 @@ export function startApp(p: Platform): void {
   bindControls();
   bindDrop();
   bindMenu();
+  bindBoost();
   bindStats();
   bindCrate();
   bindShop();
   bindWar();
+  if (!p.features.ads) btn('cFree').style.display = 'none'; // no dead ad button
   // Compile-time platform gate: no MQTT transport, no mp handlers on YT
   // (legacy hid mpBtn behind IN_PLAY — PLAN wants it tree-shaken instead).
   if (__PLATFORM__ !== 'yt') {

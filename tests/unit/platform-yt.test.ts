@@ -36,6 +36,10 @@ function fakeSdk(opts: FakeOptions = {}) {
     },
     engagement: { sendScore: vi.fn() },
     health: { logWarning: vi.fn(), logError: vi.fn() },
+    ads: {
+      requestInterstitialAd: vi.fn(async () => {}),
+      requestRewardedAd: vi.fn(async () => true),
+    },
   } satisfies YtGame;
 }
 
@@ -130,11 +134,34 @@ describe('yt platform', () => {
     await vi.waitFor(() => expect(sdk.health.logWarning).toHaveBeenCalled());
   });
 
-  it('keeps ads disabled until the ad API is ported', async () => {
-    const p = createYtPlatform(fakeSdk());
-    expect(p.features.ads).toBe(false);
+  it('ports the ad API: interstitial + rewarded with graceful failure', async () => {
+    const sdk = fakeSdk();
+    const p = createYtPlatform(sdk);
+    expect(p.features.ads).toBe(true);
+
     await expect(p.requestInterstitial()).resolves.toBeUndefined();
+    expect(sdk.ads.requestInterstitialAd).toHaveBeenCalledTimes(1);
+
+    await expect(p.requestRewarded('crate-free-1')).resolves.toBe(true);
+    expect(sdk.ads.requestRewardedAd).toHaveBeenCalledWith('crate-free-1');
+
+    // SDK failures degrade (never throw into gameplay): interstitial resolves,
+    // rewarded resolves false, both log health noise.
+    sdk.ads.requestInterstitialAd.mockRejectedValueOnce(new Error('boom'));
+    sdk.ads.requestRewardedAd.mockRejectedValueOnce(new Error('boom'));
+    await expect(p.requestInterstitial()).resolves.toBeUndefined();
+    await expect(p.requestRewarded('boost-2x-1')).resolves.toBe(false);
+    expect(sdk.health.logWarning).toHaveBeenCalled();
+  });
+
+  it('keeps ads inert outside the Playables environment', async () => {
+    const sdk = fakeSdk({ inPlay: false });
+    const p = createYtPlatform(sdk);
+    await p.init(() => {});
+    await p.requestInterstitial();
     await expect(p.requestRewarded('crate-free-1')).resolves.toBe(false);
+    expect(sdk.ads.requestInterstitialAd).not.toHaveBeenCalled();
+    expect(sdk.ads.requestRewardedAd).not.toHaveBeenCalled();
   });
 });
 

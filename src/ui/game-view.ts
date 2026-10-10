@@ -98,7 +98,11 @@ export const STATS: Array<[keyof AccStats, string, string]> = [
   ['hp', 'stat.hp.name', 'stat.hp.desc'],
 ];
 
-export function renderStats(s: GameState, onAdd: (k: keyof AccStats) => void): void {
+/**
+ * Stats screen. `adGated` (Phase 5): on ad-supported platforms the respec is
+ * free behind a rewarded ad; otherwise the legacy coin price applies.
+ */
+export function renderStats(s: GameState, onAdd: (k: keyof AccStats) => void, adGated = false): void {
   $('sInfo').textContent = t('stats.info', { l: accLvl(s), p: pts(s) });
   const L = $('sList');
   L.innerHTML = '';
@@ -117,9 +121,14 @@ export function renderStats(s: GameState, onAdd: (k: keyof AccStats) => void): v
     r.appendChild(b);
     L.appendChild(r);
   });
-  const rc = 50 * accLvl(s);
-  btn('sReset').textContent = t('stats.reset', { c: rc });
-  btn('sReset').disabled = s.coins < rc || spent(s) === 0;
+  if (adGated) {
+    btn('sReset').textContent = t('stats.resetAd');
+    btn('sReset').disabled = spent(s) === 0;
+  } else {
+    const rc = 50 * accLvl(s);
+    btn('sReset').textContent = t('stats.reset', { c: rc });
+    btn('sReset').disabled = s.coins < rc || spent(s) === 0;
+  }
 }
 
 // ---- level-up crate (legacy lines 277–294) ----

@@ -126,6 +126,45 @@ test('screens: stats and shop open and return to the menu', async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
+test('rewarded ads: free crate, stats respec and boost work through the mock', async ({ page }) => {
+  const errors = collectErrors(page);
+  await seedSave(page); // fixture: crates 1, 5 stat points spent, 4820 coins
+  await gotoKit(page);
+  await page.locator('#play').click();
+  const rewards = async (): Promise<string[]> =>
+    page.evaluate(() => globalThis.__platform!.rewards);
+
+  // Free crate: #cFree grants +1 without touching the economy.
+  await expect(page.locator('#crate')).toBeVisible();
+  await page.locator('#crate').click();
+  await page.locator('#cFree').click();
+  await expect(page.locator('#cInfo')).toContainText('Skrzynki: 2');
+  expect(await rewards()).toContain('crate-free-1');
+  await page.locator('#cClose').click();
+
+  // Coin boost: the ad arms a 60 s countdown on the HUD button.
+  await expect(page.locator('#boost')).toBeVisible();
+  await page.locator('#boost').click();
+  await expect(page.locator('#boost')).toContainText('×2 monety: 60 s');
+  await expect(page.locator('#boost')).toBeDisabled();
+  expect(await rewards()).toContain('boost-2x-1');
+
+  // Stats respec: ad-gated (free) instead of the legacy coin price.
+  await page.locator('#menuBtn').click();
+  await page.getByRole('button', { name: 'Statystyki' }).click();
+  await expect(page.locator('#sReset')).toHaveText('Przydziel od nowa za darmo (reklama 📺)');
+  await expect(page.locator('#sReset')).toBeEnabled();
+  const coinsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
+  await page.locator('#sReset').click();
+  await expect(page.locator('#stats #sInfo')).toContainText('wolne punkty: 4'); // reset → accLvl 5 − 1
+  expect(await rewards()).toContain('stats-reset-1');
+  await settleSaves(page);
+  const coinsAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('mine-merge-save-v1') ?? '{}').coins ?? 0);
+  // Free: no legacy 50×lvl deduction — only passive-income drift (≤ a few coins).
+  expect(coinsAfter - coinsBefore).toBeLessThan(50);
+  expect(errors).toEqual([]);
+});
+
 test('level-up crate: opens, spins, awards the ball', async ({ page }) => {
   const errors = collectErrors(page);
   await seedSave(page); // the fixture carries acc.crates = 1
@@ -177,6 +216,16 @@ test('war: prepare rolls a battle, upgrades buy, fight runs to a result', async 
   await page.locator('#wGo').click();
   await expect.poll(warLog).toBe('Bitwa!');
   await expect.poll(warLog, { timeout: 30000 }).toMatch(/Zwycięstwo!|Porażka/);
+
+  // Phase 5.1: the verdict is a natural breakpoint → one paced interstitial…
+  expect(await page.evaluate(() => globalThis.__platform!.interstitials)).toBe(1);
+  // …and a win additionally offers the rewarded "double the payout".
+  if ((await warLog()).includes('Zwycięstwo')) {
+    await expect(page.locator('#wDouble')).toBeVisible();
+  } else {
+    await expect(page.locator('#wDouble')).toBeHidden();
+  }
+
   await expect(page.locator('#wGo')).toHaveText('Dalej');
   await page.locator('#wGo').click();
   await expect.poll(warLog).toContain('Wróg poz.');

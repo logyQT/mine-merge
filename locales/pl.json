@@ -9,6 +9,7 @@
   "common.classic": "Klasyczne",
   "common.levelUnit": " poz.",
   "hud.hint": "Dotknij przedmiot, potem taki sam, by je połączyć.",
+  "hud.drop": "RZUĆ!",
   "hud.depth": "Głęb.: {d} m",
   "hud.crate": {
     "one": "🎁 Otwórz skrzynkę ({n})",

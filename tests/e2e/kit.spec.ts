@@ -269,6 +269,9 @@ test('en locale: English chrome, canvas log, layout fits at 360 px', async ({ pa
   // Dynamic HUD chrome renders through t() too.
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('#spawn')).toContainText('New (lvl');
+  // Regression pin (Phase 5 follow-up): static markup must not leak Polish
+  // into other locales — #drop used to be a hardcoded "RZUĆ!".
+  await expect(page.locator('#drop')).toHaveText('DROP!');
 
   // The war screen draws t() at render time — on the canvas.
   await page.locator('#menuBtn').click();

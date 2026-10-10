@@ -42,6 +42,7 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
   "hud.depth": "Głęb.: {d} m",
   "hud.discount": "🏷 Zniżka −{p}% 🪙{c}",
   "hud.discountMax": "🏷 Zniżka MAX",
+  "hud.drop": "RZUĆ!",
   "hud.dropResult": {
     "few": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
     "many": "Zdobyto 🪙{coins}. Na planszę wróciło {back}, do ekwipunku {inv}.",
@@ -226,6 +227,7 @@ exports[`locale files > pl.json is byte-identical to the extracted legacy string
   "hud.depth": "Depth: {d} m",
   "hud.discount": "🏷 Discount −{p}% 🪙{c}",
   "hud.discountMax": "🏷 MAX discount",
+  "hud.drop": "DROP!",
   "hud.dropResult": "Earned 🪙{coins}. Returned {back} to the board, {inv} to the inventory.",
   "hud.hint": "Tap an item, then another of the same kind, to merge them.",
   "hud.inc": "Income ×{m} 🪙{p}",

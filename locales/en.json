@@ -9,6 +9,7 @@
   "common.classic": "Classic",
   "common.levelUnit": " lvl",
   "hud.hint": "Tap an item, then another of the same kind, to merge them.",
+  "hud.drop": "DROP!",
   "hud.depth": "Depth: {d} m",
   "hud.crate": "🎁 Open crate ({n})",
   "hud.spawn": "New (lvl {l}) 🪙{p}",
